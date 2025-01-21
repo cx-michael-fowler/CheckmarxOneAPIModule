@@ -1,16 +1,5 @@
 This module has been created to simplify common tasks when scritpting for Checkmarx One
-
-    Version:     1.0
-    Date:        20/01/2025
-    Written by:  Michael Fowler
-    Contact:     michael.fowler@checkmarx.com
-    
-Change Log
-
-    Version    Detail
-    -----------------
-    1.0        Original version
-    
+   
 The following functions are available for this module
     
     ApiCall
