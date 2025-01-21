@@ -905,8 +905,6 @@ class Scans {
     #region Variables
 
     [System.Collections.Generic.List[Scan]]$ScansList
-    [Int]$FilteredTotalCount
-    [Int]$TotalCount
 
     #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
@@ -914,6 +912,8 @@ class Scans {
 
     Hidden [Int]$Offset = 0
     Hidden [Int]$Limit = 100
+    Hidden [Int]$FilteredTotalCount
+    Hidden [Int]$TotalCount
 
     #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1105,7 +1105,6 @@ Class Results {
     #region Variables
 
     [System.Collections.Generic.List[Result]]$ResultsList
-    [Int]$TotalCount
 
     #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1113,6 +1112,7 @@ Class Results {
 
     Hidden [Int]$Offset = 0
     Hidden [Int]$Limit = 20
+    Hidden [Int]$TotalCount
 
     #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
