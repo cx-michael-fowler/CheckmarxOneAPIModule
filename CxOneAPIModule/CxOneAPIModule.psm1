@@ -26,7 +26,7 @@
             Performs error handling
         Parameters
             ScriptBlock - Script block to run. Must be Invoke-WebRequest or Invoke-RestMethod
-            conn - a Checkmarx One connection object
+            CxOneConnObj - a Checkmarx One connection object
             noerror - switch to ignore error hanlder and rethrow the error
         Examplle 
             $response = ApiCall { Invoke-WebRequest $uri -Method GET -Headers $conn.Headers } $conn
@@ -147,11 +147,11 @@
 Function ApiCall() {
     Param(
         [Parameter(Mandatory=$true)][scriptblock]$scriptBlock,
-        [Parameter(Mandatory=$true)][CxOneConnection]$conn,
+        [Parameter(Mandatory=$true)][CxOneConnection]$CxOneConnObj,
         [Parameter(Mandatory=$false)][switch]$noerror
     )
 
-    $conn.ValidateToken | Out-Null
+    $CxOneConnObj.ValidateToken | Out-Null
 
     try {
         $response = Invoke-Command -Command $scriptBlock
