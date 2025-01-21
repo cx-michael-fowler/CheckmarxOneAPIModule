@@ -29,7 +29,7 @@ The following functions are available for this module
         Details
             Function to create a Checkmarx Connection object with a prompt for the API Key
             Connection object is needed for additional calls in module
-            Connection object contains the BaseURI and Authorisdation Headers
+            Connection object contains the BaseURI and Authorisation Headers
         Parameters
             No Parameters required
         Example 
@@ -39,7 +39,7 @@ The following functions are available for this module
         Details
             Function to create a Checkmarx Connection object with a provided API Key
             Connection object is needed for additional calls in modeule
-            Connection object contains the BaseURI and Authorisdation Headers
+            Connection object contains the BaseURI and Authorisation Headers
         Parameters
             apikey - Checkmarx One API key
         Example
