@@ -6,7 +6,7 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     2.0
+    Version:     3.0
     Date:        30/01/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
@@ -17,6 +17,7 @@
     1.0        Original version
     1.1        Added LOC to Scan object
     2.0        Added Severity Counters
+    3.0        Updated to return Hash Tables rather than Lists to facilitate lookups
     
 .Description
     The following functions are available for this module
@@ -55,7 +56,7 @@
         
     Get-AllProjects
         Details
-            Function to return a list of all projects
+            Function to return a Hash of all projects with Key = Project ID and Value = Project Object 
             Returns a List of project objects
         Parameters
             CxOneConnObj - Checkmarx One connection object
@@ -65,7 +66,8 @@
     
     Get-ProjectsByNames
         Details 
-            Function to get a list of projects filtered by CSV string of project names
+            Function to get a hash of projects filtered by CSV string of project names
+            Key = Project ID and Value = Project Object 
         Parameters
             CxOneConnObj - Checkmarx One connection object
             projectNames - CSV string of project names to filter results returned
@@ -75,7 +77,8 @@
                   
     Get-ProjectsByIds
         Details
-            Function to get a list of projects filtered by CVS string of project ids
+            Function to get a hash of projects filtered by CVS string of project ids
+            Key = Project ID and Value = Project Object 
         Parameters
             CxOneConnObj - Checkmarx One connection object
             projectIds - CSV string of project Ids to filter results returned
@@ -85,7 +88,8 @@
         
     Get-AllScans
         Details
-            Function to get all scans filtered by statuses provided as a CSV string.
+            Function to get a hash of scans filtered by statuses provided as a CSV string
+            Key = Scan ID and Value = Scan Object 
             Valid Statuses are Queued, Running, Completed, Failed, Partial, Canceled
             All Statuses are required pass $null or empty string for statuses
         Parameters
@@ -96,7 +100,8 @@
             
     Get-AllScansByDays
         Details
-            Function to get all scans filtered by statuses provided as a CSV string and number of days.
+            Function to get a hash of all scans filtered by statuses provided as a CSV string and number of days.
+            Key = Scan ID and Value = Scan Object
             Valid Statuses are Queued, Running, Completed, Failed, Partial, Canceled
             If all Statuses are required pass $null or empty string for statuses
             Number of days must be a integer greater or equal to 0. 0 will return all days
@@ -109,7 +114,8 @@
         
     Get-LastScans
         Details
-            Get the last scan for the projects provided in the projects list. 
+            Get a hash of the the last scans for the projects provided in the projects hash.
+            Key = Scan ID and Value = Scan Object
             Optional switch to return last scan for Main Branch (if set)
         Parameters
             CxOneConnObj - Checkmarx One connection object
@@ -120,7 +126,8 @@
             
     Get-LastScansForGivenBranches
         Details
-            Get the last scan for the projects provided in the projects list. 
+            Get a hash of the last scan for the projects provided in the projects hash.
+            Key = Scan ID and Value = Scan Object
             Returns last scan for the branch provided in the CSV file
             branchesCSV must be a file path to a CSV with the header Projects,Branches and one project,branch per line
         Parameters
@@ -133,7 +140,8 @@
     Get-ScanResults
         Details
             Get the results for a given scan ID
-            Returns a list of result objects
+            Returns a hash of result objects
+            Key = Scan ID and Value = Result Object
         Parameters
             CxOneConnObj - Checkmarx One connection object
             scanId - The ID of the scan results to return
@@ -142,8 +150,8 @@
 
     Get-SeverityCounters
         Details
-            Get the severity counters for a given list of Scans
-            Returns a dictionary with Key = Scan ID and Value = Severity Counter Object
+            Get a hash with the severity counters for a given list of Scans
+            Returns a hash with Key = Scan ID and Value = Severity Counter Object
         Parameters
             CxOneConnObj - Checkmarx One connection object
             scanList - List of Scans to return counters for. Must be a list as provided by call above
@@ -202,7 +210,7 @@ Function Get-AllProjects {
         [Switch]$getBranches
     )
 
-    return ([Projects]::new($CxOneConnObj, $getBranches)).ProjectsList
+    return ([Projects]::new($CxOneConnObj, $getBranches)).ProjectsHash
 }
 
 #Function to return a filtered list of Projects using comma seperated string of names.
@@ -218,7 +226,7 @@ Function Get-ProjectsByNames {
         [Switch]$getBranches
     )
 
-    return ([Projects]::new($CxOneConnObj, $null, $projectNames, $getBranches)).ProjectsList
+    return ([Projects]::new($CxOneConnObj, $null, $projectNames, $getBranches)).ProjectsHash
 }
 
 #Function to return a filtered list of Projects using comma seperated string of IDs.
@@ -235,7 +243,7 @@ Function Get-ProjectsByIds {
         [Switch]$getBranches
     )
 
-    return ([Projects]::new($CxOneConnObj, $projectIds, $null, $getBranches)).ProjectsList
+    return ([Projects]::new($CxOneConnObj, $projectIds, $null, $getBranches)).ProjectsHash
 }
 
 #Get all scans filtered by CSV string of statuses. If all statuses are required pass $null or ""
@@ -269,7 +277,7 @@ Function Get-AllScansByDays {
         [String]$scanDays
     )
     
-    return ([Scans]::new($CxOneConnObj, $statuses, $scanDays)).ScansList
+    return ([Scans]::new($CxOneConnObj, $statuses, $scanDays)).ScansHash
 }
 
 #Get the last scan for the projects provided in the projects list. 
@@ -279,13 +287,13 @@ Function Get-LastScans {
         [CxOneConnection]$CxOneConnObj,
 
         [Parameter(Mandatory=$true)]
-        [System.Collections.Generic.List[Project]]$projectsList,
+        [System.Collections.Generic.Dictionary[String, Project]]$projectsHash,
 
         [Parameter(Mandatory=$false)]
         [Switch]$useMainBranch
     )
 
-    return ([Scans]::new($CxOneConnObj, $projectsList, $useMainBranch, $null)).ScansList
+    return ([Scans]::new($CxOneConnObj, $projectsHash, $useMainBranch, $null)).ScansHash
 }
 
 #Get the last scan for the projects provided in the projects list. Takes a filepath to a CSV containing the mapping of projects to branch 
@@ -302,7 +310,7 @@ Function Get-LastScansForGivenBranches {
         [String]$branchesCSV
     )
 
-    return ([Scans]::new($CxOneConnObj, $projectsList, $false, $branchesCSV)).ScansList
+    return ([Scans]::new($CxOneConnObj, $projectsList, $false, $branchesCSV)).ScansHash
 }
 
 #Get the results for a given scan ID
@@ -316,7 +324,7 @@ Function Get-ScanResults {
         [String]$scanId
     )
 
-    return ([Results]::new($CxOneConnObj, $scanId)).ResultsList
+    return ([Results]::new($CxOneConnObj, $scanId)).ResultsHash
 }
 
 #Get the Severity Counters for the given list of scans. Returns a dictionary with key = ScanId and value = Severity Counter Object
@@ -326,10 +334,10 @@ Function Get-SeverityCounters {
         [CxOneConnection]$CxOneConnObj,
 
         [Parameter(Mandatory=$true)]
-        [System.Collections.Generic.List[Scan]]$ScansList
+        [System.Collections.Generic.Dictionary[String, Scan]]$ScansHash
     )
 
-    return ([SeverityCounters]::new($CxOneConnObj, $ScansList)).SeverityCountersDict
+    return ([SeverityCounters]::new($CxOneConnObj, $ScansHash)).SeverityCountersHash
 }
 
 #endregion
@@ -753,7 +761,7 @@ class Projects {
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Variables
 
-    [System.Collections.Generic.List[Project]]$ProjectsList
+    [System.Collections.Generic.Dictionary[String, Project]]$ProjectsHash
 
     #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
@@ -769,25 +777,25 @@ class Projects {
     #region Constructors
 
     #Get All Projects
-    Projects([CxOneConnection]$conn, [switch]$getBranches) { $this.GetProjectList($conn, $null, $null, $getBranches) }
+    Projects([CxOneConnection]$conn, [switch]$getBranches) { $this.GetProjectHash($conn, $null, $null, $getBranches) }
     
     #Get filtered List of projects - Using both Name and ID will not return any values
     Projects([CxOneConnection]$conn, [String]$projectIds, [String]$projectNames, [switch]$getBranches) { 
-        $this.GetProjectList($conn, $projectIds, $projectNames, $getBranches)
+        $this.GetProjectHash($conn, $projectIds, $projectNames, $getBranches)
     }
     
     #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Hidden Methods
 
-    [void] Hidden GetProjectList([CxOneConnection]$conn, [String]$projectIds, [String]$projectNames, [switch]$getBranches) {
+    [void] Hidden GetProjectHash([CxOneConnection]$conn, [String]$projectIds, [String]$projectNames, [switch]$getBranches) {
         
         Write-Verbose "Retrieving projects"
         
         $this.Offset = 0
         $this.Limit = 100
 
-        $this.projectsList = [System.Collections.Generic.List[Project]]::New()
+        $this.projectsHash= [System.Collections.Generic.Dictionary[String, Project]]::New()
 
         do {
     
@@ -811,7 +819,7 @@ class Projects {
                 $this.TotalCount = $json.totalCount   
             }
 
-            foreach ($p in $json.projects) { $this.ProjectsList.Add([Project]::new($p)) }
+            foreach ($p in $json.projects) { $this.ProjectsHash.Add($p.id, [Project]::new($p)) }
 
             Write-Verbose "$($this.Limit) Projects Retrieved with Offset: $($this.Offset)"
             $this.Offset += $this.Limit
@@ -933,7 +941,7 @@ class Scans {
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Variables
 
-    [System.Collections.Generic.List[Scan]]$ScansList
+    [System.Collections.Generic.Dictionary[String, Scan]]$ScansHash
 
     #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
@@ -953,25 +961,25 @@ class Scans {
     
     Scans([CxOneConnection]$conn) { $this.GetScansList($conn, $null) }
 
-    Scans([CxOneConnection]$conn, [System.Collections.Generic.List[Project]]$projectsList, [Switch]$useMainBranch, [String]$branchesCSV) { 
-        $this.GetLastScansList($conn , $projectsList, $useMainBranch, $branchesCSV)
+    Scans([CxOneConnection]$conn, [System.Collections.Generic.Dictionary[String, Project]]$projectsHash, [Switch]$useMainBranch, [String]$branchesCSV) { 
+        $this.GetLastScansHash($conn , $projectsHash, $useMainBranch, $branchesCSV)
     }
     
     #Get List of scans using a comma seperated string of statuses to filter by
-    Scans([CxOneConnection]$conn, [String]$statuses) { $this.GetScansList($conn, $statuses, 0) }
+    Scans([CxOneConnection]$conn, [String]$statuses) { $this.GetScansHash($conn, $statuses, 0) }
 
     #Get List of scans using a comma seperated string of statuses to filter by and number of days to retrieve
-    Scans([CxOneConnection]$conn, [String]$statuses, [Int]$scanDays) { $this.GetScansList($conn, $statuses, $scanDays) }
+    Scans([CxOneConnection]$conn, [String]$statuses, [Int]$scanDays) { $this.GetScansHash($conn, $statuses, $scanDays) }
     
     #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Hidden Methods
     
-    [void] Hidden GetScansList([CxOneConnection]$conn, [String]$statuses, [Int]$scanDays) {
+    [void] Hidden GetScansHash([CxOneConnection]$conn, [String]$statuses, [Int]$scanDays) {
         
         Write-Verbose "Retrieving scans"
 
-        $this.ScansList = [System.Collections.Generic.List[Scan]]::New()
+        $this.ScansHash = [System.Collections.Generic.Dictionary[String, Scan]]::New()
         $fromDate = ""
         
         if ($scanDays) { $fromDate = [uri]::EscapeDataString(([datetime]::Today).AddDays(-$scanDays).ToString("yyyy-MM-ddThh:mm:ss.fffffffZ")) }
@@ -993,7 +1001,7 @@ class Scans {
                 $this.TotalCount = $json.totalCount   
             }
 
-            foreach ($p in $json.scans) { $this.ScansList.Add([Scan]::new($p)) }
+            foreach ($scan in $json.scans) { $this.ScansHash.Add($scan.id, [Scan]::new($scan)) }
 
             Write-Verbose "$($this.Limit) Scans Retrieved with Offset: $($this.Offset)"
             $this.Offset += $this.Limit
@@ -1001,10 +1009,10 @@ class Scans {
         } while ($this.Offset -lt $this.filteredTotalCount)
     }
 
-    [void] Hidden GetLastScansList([CxOneConnection]$conn, [System.Collections.Generic.List[Project]]$projectsList,
+    [void] Hidden GetLastScansHash([CxOneConnection]$conn, [System.Collections.Generic.Dictionary[String, Project]]$projectsHash,
                                    [switch] $useMainBranch, [string]$branchesCSV) {
 
-        $this.ScansList = [System.Collections.Generic.List[Scan]]::New()
+        $this.ScansHash= [System.Collections.Generic.DIctionary[String, Scan]]::New()
         $branches = @()
 
         #Load branaches filter from csv if present
@@ -1019,7 +1027,7 @@ class Scans {
             Write-Verbose "branches listing loaded"
         }
 
-        foreach ($p in $projectsList) {
+        foreach ($p in $projectsHash.values) {
 
             $uri = "$($conn.BaseURI)/api/projects/last-scan?project-ids=$($p.ProjectID)" +
                    "&scan-status=Completed&use-main-branch=$($useMainBranch.toString())"
@@ -1040,7 +1048,7 @@ class Scans {
             $scan.Add("projectId", $p.projectId)
             $scan.Add("projectName", $p.ProjectName)
 
-            $this.ScansList.Add([Scan]::new($scan)) 
+            $this.ScansHash.Add($scan.id, [Scan]::new($scan)) 
         }
     }
 
@@ -1116,7 +1124,7 @@ Class Results {
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Variables
 
-    [System.Collections.Generic.List[Result]]$ResultsList
+    [System.Collections.Generic.Dictionary[String, Result]]$ResultsHash
     [Int]$TotalCount
 
     #endregion
@@ -1131,17 +1139,17 @@ Class Results {
     #region Constructors
 
     #Get All Results 
-    Results([CxOneConnection]$conn, [String]$scanId) { $this.GetResultsList($conn, $scanId) }
+    Results([CxOneConnection]$conn, [String]$scanId) { $this.GetResultsHash($conn, $scanId) }
     
     #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Hidden Methods
 
-    [void] Hidden GetResultsList([CxOneConnection]$conn, [String]$scanId) {
+    [void] Hidden GetResultsHash([CxOneConnection]$conn, [String]$scanId) {
         
-        Write-Verbose "Retrieving projects"
+        Write-Verbose "Retrieving results"
 
-        $this.ResultsList = [System.Collections.Generic.List[Result]]::New()
+        $this.ResultsHash = [System.Collections.Generic.Dictionary[String, Result]]::New()
 
         do {
     
@@ -1153,7 +1161,7 @@ Class Results {
         
             if ($this.Offset -eq 0) { $this.TotalCount = $response.totalCount }
 
-            foreach ($r in $response.results) { $this.ResultsList.Add([Result]::new($r)) }
+            foreach ($r in $response.results) { $this.ResultsHash.Add($scanId, [Result]::new($r)) }
 
             Write-Verbose "$($this.Limit) Results Retrieved with Offset: $($this.Offset)"
             $this.Offset += $this.Limit
@@ -1308,27 +1316,29 @@ class SeverityCounters {
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Variables
 
-    [System.Collections.Generic.Dictionary[String, SeverityCount]]$SeverityCountersDict
+    [System.Collections.Generic.Dictionary[String, SeverityCount]]$SeverityCountersHash
 
     #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Constructors
 
     #Get All Results 
-    SeverityCounters([CxOneConnection]$conn, [System.Collections.Generic.List[Scan]]$ScansList) { $this.GetSeverityCountersDict($conn, $ScansList) }
+    SeverityCounters([CxOneConnection]$conn, [System.Collections.Generic.Dictionary[String, Scan]]$ScansHash) { 
+        $this.GetSeverityCountersHash($conn, $ScansHash) 
+    }
     
     #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Hidden Methods
 
-    Hidden [void] GetSeverityCountersDict([CxOneConnection]$conn, [System.Collections.Generic.List[Scan]]$ScansList) {
+    Hidden [void] GetSeverityCountersHash([CxOneConnection]$conn, [System.Collections.Generic.Dictionary[String, Scan]]$ScansHash) {
 
-        $this.SeverityCountersDict = [System.Collections.Generic.Dictionary[String, SeverityCount]]::New()
+        $this.SeverityCountersHash = [System.Collections.Generic.Dictionary[String, SeverityCount]]::New()
         
-        foreach ($scan in $ScansList) {    
+        foreach ($scan in $ScansHash.values) {    
             $uri = "$($conn.BaseURI)/api/scan-summary/?scan-ids=$($scan.ScanID)"
             $response = ApiCall { Invoke-RestMethod $uri -Method GET -Headers $conn.Headers } $conn
-            $this.SeverityCountersDict.Add($scan.ScanID, [SeverityCount]::new($response.scansSummaries))
+            $this.SeverityCountersHash.Add($scan.ScanID, [SeverityCount]::new($response.scansSummaries))
         }
     }
 
