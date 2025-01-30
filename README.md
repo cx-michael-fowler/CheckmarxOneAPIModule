@@ -120,3 +120,13 @@ The following functions are available for this module
             scanId - The ID of the scan results to return
         Example
             $results = Get-ScanResults $conn "<scan_id>"
+    
+    Get-SeverityCounters
+        Details
+            Get the severity counters for a given list of Scans
+            Returns a dictionary with Key = Scan ID and Value = Severity Counter Object
+        Parameters
+            CxOneConnObj - Checkmarx One connection object
+            scanList - List of Scans to return counters for. Must be a list as provided by call above
+        Example
+            $results = Get-SeverityCounters $conn $scanList
