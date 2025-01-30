@@ -6,8 +6,8 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     1.1
-    Date:        28/01/2025
+    Version:     2.0
+    Date:        30/01/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
     
@@ -16,6 +16,7 @@
     -----------------
     1.0        Original version
     1.1        Added LOC to Scan object
+    2.0        Added Severity Counters
     
 .Description
     The following functions are available for this module
@@ -138,6 +139,16 @@
             scanId - The ID of the scan results to return
         Example
             $results = Get-ScanResults $conn "<scan_id>"
+
+    Get-SeverityCounters
+        Details
+            Get the severity counters for a given list of Scans
+            Returns a dictionary with Key = Scan ID and Value = Severity Counter Object
+        Parameters
+            CxOneConnObj - Checkmarx One connection object
+            scanList - List of Scans to return counters for. Must be a list as provided by call above
+        Example
+            $results = Get-SeverityCounters $conn $scanList
 #>
 
 #endregion
@@ -174,7 +185,8 @@ Function New-Connection {
 #Function to return a CxOneConnection Object silently using provided API Key
 Function New-SilentConnection {
     Param(
-        [Parameter(Mandatory=$true)][string]$apikey
+        [Parameter(Mandatory=$true)]
+        [string]$apikey
     )    
 
     return [CxOneConnection]::new($apiKey)
@@ -183,8 +195,11 @@ Function New-SilentConnection {
 #Function to return a List of Project Objects
 Function Get-AllProjects {
     Param(
-        [Parameter(Mandatory=$true)][CxOneConnection]$CxOneConnObj,
-        [Parameter(Mandatory=$false)][Switch]$getBranches
+        [Parameter(Mandatory=$true)]
+        [CxOneConnection]$CxOneConnObj,
+
+        [Parameter(Mandatory=$false)]
+        [Switch]$getBranches
     )
 
     return ([Projects]::new($CxOneConnObj, $getBranches)).ProjectsList
@@ -193,9 +208,14 @@ Function Get-AllProjects {
 #Function to return a filtered list of Projects using comma seperated string of names.
 Function Get-ProjectsByNames {
     Param(
-        [Parameter(Mandatory=$true)][CxOneConnection]$CxOneConnObj,
-        [Parameter(Mandatory=$true)][AllowEmptyString()][String]$projectNames,
-        [Parameter(Mandatory=$false)][Switch]$getBranches
+        [Parameter(Mandatory=$true)]
+        [CxOneConnection]$CxOneConnObj,
+
+        [Parameter(Mandatory=$true)]
+        [AllowEmptyString()][String]$projectNames,
+
+        [Parameter(Mandatory=$false)]
+        [Switch]$getBranches
     )
 
     return ([Projects]::new($CxOneConnObj, $null, $projectNames, $getBranches)).ProjectsList
@@ -204,9 +224,15 @@ Function Get-ProjectsByNames {
 #Function to return a filtered list of Projects using comma seperated string of IDs.
 Function Get-ProjectsByIds {
     Param(
-        [Parameter(Mandatory=$true)][CxOneConnection]$CxOneConnObj,
-        [Parameter(Mandatory=$true)][AllowEmptyString()][String]$projectIds,
-        [Parameter(Mandatory=$false)][Switch]$getBranches
+        [Parameter(Mandatory=$true)]
+        [CxOneConnection]$CxOneConnObj,
+
+        [Parameter(Mandatory=$true)]
+        [AllowEmptyString()]
+        [String]$projectIds,
+
+        [Parameter(Mandatory=$false)]
+        [Switch]$getBranches
     )
 
     return ([Projects]::new($CxOneConnObj, $projectIds, $null, $getBranches)).ProjectsList
@@ -215,8 +241,12 @@ Function Get-ProjectsByIds {
 #Get all scans filtered by CSV string of statuses. If all statuses are required pass $null or ""
 Function Get-AllScans {
     Param(
-        [Parameter(Mandatory=$true)][CxOneConnection]$CxOneConnObj,
-        [Parameter(Mandatory=$true)][AllowEmptyString()][String]$statuses
+        [Parameter(Mandatory=$true)]
+        [CxOneConnection]$CxOneConnObj,
+
+        [Parameter(Mandatory=$true)]
+        [AllowEmptyString()]
+        [String]$statuses
     )
 
     return ([Scans]::new($CxOneConnObj, $statuses)).ScansList
@@ -225,9 +255,18 @@ Function Get-AllScans {
 #Get all scans filtered by CSV string of statuses and number of days to return. If all statuses are required pass $null or ""
 Function Get-AllScansByDays {
     Param(
-        [Parameter(Mandatory=$true)][CxOneConnection]$CxOneConnObj,
-        [Parameter(Mandatory=$true)][AllowEmptyString()][String]$statuses,
-        [Parameter(Mandatory=$true)][AllowEmptyString()][String][ValidateRange(1,366)]$scanDays
+        [Parameter(Mandatory=$true)]
+        [CxOneConnection]$CxOneConnObj,
+
+        [Parameter(Mandatory=$true)]
+        [AllowEmptyString()]
+        [ValidateSet("Queued", "Running", "Completed", "Failed", "Partial", "Canceled", IgnoreCase = $false)]
+        [String]$statuses,
+
+        [Parameter(Mandatory=$true)]
+        [AllowEmptyString()]
+        [ValidateRange(1,366)]
+        [String]$scanDays
     )
     
     return ([Scans]::new($CxOneConnObj, $statuses, $scanDays)).ScansList
@@ -236,9 +275,14 @@ Function Get-AllScansByDays {
 #Get the last scan for the projects provided in the projects list. 
 Function Get-LastScans {
     Param(
-        [Parameter(Mandatory=$true)][CxOneConnection]$CxOneConnObj,
-        [Parameter(Mandatory=$true)][System.Collections.Generic.List[Project]]$projectsList,
-        [Parameter(Mandatory=$false)][Switch]$useMainBranch
+        [Parameter(Mandatory=$true)]
+        [CxOneConnection]$CxOneConnObj,
+
+        [Parameter(Mandatory=$true)]
+        [System.Collections.Generic.List[Project]]$projectsList,
+
+        [Parameter(Mandatory=$false)]
+        [Switch]$useMainBranch
     )
 
     return ([Scans]::new($CxOneConnObj, $projectsList, $useMainBranch, $null)).ScansList
@@ -247,9 +291,15 @@ Function Get-LastScans {
 #Get the last scan for the projects provided in the projects list. Takes a filepath to a CSV containing the mapping of projects to branch 
 Function Get-LastScansForGivenBranches {
     Param(
-        [Parameter(Mandatory=$true)][CxOneConnection]$CxOneConnObj,
-        [Parameter(Mandatory=$true)][System.Collections.Generic.List[Project]]$projectsList,
-        [Parameter(Mandatory=$true)][AllowEmptyString()][String]$branchesCSV
+        [Parameter(Mandatory=$true)]
+        [CxOneConnection]$CxOneConnObj,
+
+        [Parameter(Mandatory=$true)]
+        [System.Collections.Generic.List[Project]]$projectsList,
+
+        [Parameter(Mandatory=$true)]
+        [AllowEmptyString()]
+        [String]$branchesCSV
     )
 
     return ([Scans]::new($CxOneConnObj, $projectsList, $false, $branchesCSV)).ScansList
@@ -258,11 +308,28 @@ Function Get-LastScansForGivenBranches {
 #Get the results for a given scan ID
 Function Get-ScanResults {
     Param(
-        [Parameter(Mandatory=$true)][CxOneConnection]$CxOneConnObj,
-        [Parameter(Mandatory=$true)][AllowEmptyString()][String]$scanId
+        [Parameter(Mandatory=$true)]
+        [CxOneConnection]$CxOneConnObj,
+
+        [Parameter(Mandatory=$true)]
+        [AllowEmptyString()]
+        [String]$scanId
     )
 
     return ([Results]::new($CxOneConnObj, $scanId)).ResultsList
+}
+
+#Get the Severity Counters for the given list of scans. Returns a dictionary with key = ScanId and value = Severity Counter Object
+Function Get-SeverityCounters {
+    Param(
+        [Parameter(Mandatory=$true)]
+        [CxOneConnection]$CxOneConnObj,
+
+        [Parameter(Mandatory=$true)]
+        [System.Collections.Generic.List[Scan]]$ScansList
+    )
+
+    return ([SeverityCounters]::new($CxOneConnObj, $ScansList)).SeverityCountersDict
 }
 
 #endregion
@@ -600,71 +667,58 @@ class CxOneConnection {
 #region Projects Classes
 
 class Project {
-    #---------------------------------------------------------------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Variables
     
-    [String]$ProjectID = $null
-    [String]$ProjectName = $null
-    [String]$TenantId = $null
-    [Nullable[datetime]]$CreatedAt = $null
-    [Nullable[datetime]]$UpdatedAt = $null
-    [Array]$Groups = $null
-    [string]$GroupsString = $null
-    [String]$RepoURL = $null
-    [String]$MainBranch = $null
-    [String]$Origin = $null
-    [System.Collections.IDictionary]$Tags = $null
-    [string]$TagsString = $null
-    [Int]$Criticality = $null
-    [Bool]$PrivatePackage = $null
-    [String]$ImportedProjName = $null
-    [Array]$Branches = $null
-    [string]$BranchesString = $null
+    [String]$ProjectID
+    [String]$ProjectName
+    [String]$TenantId
+    [Nullable[datetime]]$CreatedAt
+    [Nullable[datetime]]$UpdatedAt
+    [Array]$Groups
+    [string]$GroupsString
+    [String]$RepoURL
+    [String]$MainBranch
+    [String]$Origin
+    [System.Collections.IDictionary]$Tags
+    [string]$TagsString
+    [Int]$Criticality
+    [Bool]$PrivatePackage
+    [String]$ImportedProjName
+    [Array]$Branches
+    [string]$BranchesString
  
     #endregion    
-    #--------------------------------------------------------------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Constructors
 
     Project ([System.Collections.IDictionary]$project) { $this.SetVariables($project) }
 
     #endregion
-    #--------------------------------------------------------------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Hidden Methods
     
     [void] Hidden SetVariables([System.Collections.IDictionary]$project) {
            
-        try { $this.ProjectId = $project.id }
-        catch {}
-            
-        try { $this.ProjectName = $project.name }
-        catch {}
-    
-        try { $this.TenantId = $project.tenantId }
-        catch {}
-    
+        $this.ProjectId = $project.id        
+        $this.ProjectName = $project.name
+        $this.TenantId = $project.tenantId
+        
         try { $this.CreatedAt = [DateTime]$project.createdAt }
-        catch {}
+        catch { $this.CreatedAt = $null }
     
         try { $this.UpdatedAt = [DateTime]$project.updatedAt }
-        catch {}
+        catch { $this.UpdatedAt = $null }
             
-        try { 
-            $this.Groups = $project.groups
-            $this.Groups = ($project.groups) -join ";"
-        }
-        catch {}
+        try { $this.Groups = ($project.groups) -join ";" }
+        catch { $this.Groups = $null }
             
-        try { $this.RepoURL = $project.repoURL }
-        catch {}
-            
-        try { $this.MainBranch = $project.mainBranch }
-        catch { $this.MainBranch = $null }
-            
-        try { $this.Origin = $project.origin }
-        catch {}
+        $this.RepoURL = $project.repoURL
+        $this.MainBranch = $project.mainBranch
+        $this.Origin = $project.origin
+        $this.Tags = $project.tags
   
         try { 
-            $this.Tags = $project.tags
             $this.TagsString = $null
             foreach ($tag in $project.tags.GetEnumerator()) { 
                 if ($null -ne $this.BranchesString) { $this.BranchesString += ";" }
@@ -674,18 +728,13 @@ class Project {
         }
         catch {}
 
-        try { $this.Criticality = $project.criticality }
-        catch {}
-    
-        try { $this.PrivatePackage = [bool]$project.privatePackage }
-        catch {}
-            
-        try { $this.ImportedProjName = $project.imported_proj_name }
-        catch {}
+        $this.Criticality = $project.criticality
+        $this.PrivatePackage = [bool]$project.privatePackage
+        $this.ImportedProjName = $project.imported_proj_name
     }
 
     #endregion    
-    #--------------------------------------------------------------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Public Methods
     
     [void] AddBranches([Array]$branches) {
@@ -697,17 +746,17 @@ class Project {
     }
 
     #endregion    
-    #--------------------------------------------------------------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------------------------------------------------------------------------
 }
 
 class Projects {
-    #--------------------------------------------------------------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Variables
 
     [System.Collections.Generic.List[Project]]$ProjectsList
 
     #endregion
-    #--------------------------------------------------------------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Hidden Variables
 
     Hidden [Int]$Offset
@@ -716,7 +765,7 @@ class Projects {
     Hidden [Int]$TotalCount
 
     #endregion
-    #--------------------------------------------------------------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Constructors
 
     #Get All Projects
@@ -728,7 +777,7 @@ class Projects {
     }
     
     #endregion
-    #--------------------------------------------------------------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Hidden Methods
 
     [void] Hidden GetProjectList([CxOneConnection]$conn, [String]$projectIds, [String]$projectNames, [switch]$getBranches) {
@@ -796,7 +845,7 @@ class Projects {
     }
 
     #endregion
-    #--------------------------------------------------------------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------------------------------------------------------------------------
 }
 
 #endregion
@@ -804,25 +853,25 @@ class Projects {
 #region Scans
 
 Class Scan {
-    #---------------------------------------------------------------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Variables
 
-    [string]$ScanID = $null
-    [string]$ProjectId = $null
-    [string]$ProjectName = $null
-    [string]$Status = $null
-    [string]$Branch = $null
-    [string]$Loc = $null
-    [Nullable[datetime]]$CreatedAt = $null
-    [Nullable[datetime]]$UpdatedAt = $null
-    [Array]$Engines = $null
-    [string]$EnginesString = $null
-    [string]$UserAgent = $null
-    [string]$Initiator = $null
-    [System.Collections.IDictionary]$Tags = $null
-    [string]$TagsString = $null
-    [string]$SourceType = $null
-    [string]$SourceOrigin = $null
+    [string]$ScanID
+    [string]$ProjectId
+    [string]$ProjectName
+    [string]$Status
+    [string]$Branch
+    [string]$Loc
+    [Nullable[datetime]]$CreatedAt
+    [Nullable[datetime]]$UpdatedAt
+    [Array]$Engines 
+    [string]$EnginesString
+    [string]$UserAgent
+    [string]$Initiator
+    [System.Collections.IDictionary]$Tags
+    [string]$TagsString
+    [string]$SourceType
+    [string]$SourceOrigin
 
     #endregion    
     #--------------------------------------------------------------------------------------------------------------------------------------
@@ -838,25 +887,13 @@ Class Scan {
 
     [void] Hidden SetVariables([System.Collections.IDictionary]$scan) {
            
-        try { $this.ScanID = $scan.id }
-        catch {}
-
-        try { $this.ProjectId = $scan.projectId }
-        catch {}
-
-        try { $this.ProjectName = $scan.projectName }
-        catch {}
-
-        try { $this.Status = $scan.status }
-        catch {}
-
-        try { $this.Branch = $scan.branch }
-        catch {}
+        $this.ScanID = $scan.id
+        $this.ProjectId = $scan.projectId
+        $this.ProjectName = $scan.projectName
+        $this.Status = $scan.status
+        $this.Branch = $scan.branch
         
-        try { 
-           $scan.statusDetails | ForEach-Object -Process { if ($_.loc) { $this.Loc = $_.loc } }
-        }
-        catch {}
+        $scan.statusDetails | ForEach-Object -Process { if ($_.loc) { $this.Loc = $_.loc } }
 
         try { $this.CreatedAt = [DateTime]$scan.createdAt }
         catch {}
@@ -864,20 +901,17 @@ Class Scan {
         try { $this.UpdatedAt = [DateTime]$scan.updatedAt }
         catch {}
 
+        $this.Engines = $scan.engines
         try { 
-            $this.Engines = $scan.engines
             $this.EnginesString = (($scan.engines) -join ",")
         }
         catch {}
 
-        try { $this.UserAgent = $scan.userAgent }
-        catch {}
-        
-        try { $this.Initiator = $scan.initiator }
-        catch {}
+        $this.UserAgent = $scan.userAgent
+        $this.Initiator = $scan.initiator
+        $this.Tags = $scan.tags
 
-        try { 
-            $this.Tags = $scan.tags
+        try {         
             $this.TagsString = $null
             foreach ($tag in $scan.tags.GetEnumerator()) { 
                 if ($null -ne $this.TagsString) { $this.TagsString += ";" }
@@ -887,15 +921,12 @@ Class Scan {
         }
         catch {}
 
-        try { $this.SourceType = $scan.sourceType }
-        catch {}
-
-        try { $this.SourceOrigin = $scan.sourceOrigin }
-        catch {}
+        $this.SourceType = $scan.sourceType
+        $this.SourceOrigin = $scan.sourceOrigin
     }
     
     #endregion    
-    #--------------------------------------------------------------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------------------------------------------------------------------------
 }
 
 class Scans {
@@ -990,7 +1021,9 @@ class Scans {
 
         foreach ($p in $projectsList) {
 
-            $uri = "$($conn.BaseURI)/api/projects/last-scan?project-ids=$($p.ProjectID)&scan-status=Completed&use-main-branch=$($useMainBranch.toString())"
+            $uri = "$($conn.BaseURI)/api/projects/last-scan?project-ids=$($p.ProjectID)" +
+                   "&scan-status=Completed&use-main-branch=$($useMainBranch.toString())"
+
     
             if ($branches) {
                 $branchName = ($branches | Where-Object { $_.Projects -eq $p.ProjectName }).Branches
@@ -1020,26 +1053,26 @@ class Scans {
 #region Results Classes
 
 class Result {
-    #--------------------------------------------------------------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Variables
     
-   [string]$Type = $null
-	[string]$SimilarityId = $null
-	[string]$Status = $null
-	[string]$State = $null
-	[string]$Severity = $null
-	[Nullable[datetime]]$Created = $null
-	[Nullable[datetime]]$FirstFoundAt = $null
-	[DateTime]$FoundAt = $null
-	[string]$Description = $null
-	[string]$QueryName = $null
-	[string]$Group = $null
-	[string]$LanguageName = $null
-	[string]$CweId = $null
-   [string]$Comments = $null
+   [string]$Type
+	[string]$SimilarityId
+	[string]$Status
+	[string]$State
+	[string]$Severity
+	[Nullable[datetime]]$Created
+	[Nullable[datetime]]$FirstFoundAt
+	[DateTime]$FoundAt
+	[string]$Description
+	[string]$QueryName
+	[string]$Group
+	[string]$LanguageName
+	[string]$CweId
+   [string]$Comments
 
     #endregion
-    #--------------------------------------------------------------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Constructors
 
     Result() {}
@@ -1047,25 +1080,16 @@ class Result {
     Result ([PSCustomObject]$result) { $this.SetVariables($result) }
 
     #endregion
-        #--------------------------------------------------------------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Hidden Methods
     
     [void] Hidden SetVariables([PSCustomObject]$result) {
            
-        try { $this.Type = $result.type }
-        catch {}
-
-        try { $this.SimilarityId = $result.similarityId }
-        catch {}
-
-        try { $this.Status = $result.status }
-        catch {}
-
-        try { $this.State = $result.state }
-        catch {}
-
-        try { $this.Severity = $result.severity }
-        catch {}
+        $this.Type = $result.type
+        $this.SimilarityId = $result.similarityId
+        $this.Status = $result.status
+        $this.State = $result.state
+        $this.Severity = $result.severity
         
         try { $this.Created = [DateTime]$result.created }
         catch {}
@@ -1076,27 +1100,16 @@ class Result {
         try { $this.FoundAt = [DateTime]$result.foundAt }
         catch {}
 
-        try { $this.Description = $result.description }
-        catch {}
-
-        try { $this.QueryName = $result.data.queryName }
-        catch {}
-
-        try { $this.Group = $result.data.group }
-        catch {}
-
-        try { $this.LanguageName = $result.data.languageName }
-        catch {}
-
-        try { $this.CweId = $result.vulnerabilityDetails.cweId }
-        catch {}
-
-        try { $this.Comments = $result.comments }
-        catch {}
+        $this.Description = $result.description
+        $this.QueryName = $result.data.queryName
+        $this.Group = $result.data.group
+        $this.LanguageName = $result.data.languageName
+        $this.CweId = $result.vulnerabilityDetails.cweId
+        $this.Comments = $result.comments
     }
 
     #endregion    
-    #--------------------------------------------------------------------------------------------------------------------------------------
+    #------------------------------------------------------------------------------------------------------------------------------------------------
 }
 
 Class Results {
@@ -1146,6 +1159,177 @@ Class Results {
             $this.Offset += $this.Limit
             
         } while ($this.Offset -lt $this.TotalCount)
+    }
+
+    #endregion
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+}
+
+#endregion
+#----------------------------------------------------------------------------------------------------------------------------------------------------
+#region SeverityCounters Classes
+
+class SeverityCount {
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+    #region Variables
+    
+    [Int]$Total
+    [Int]$TotalCritical
+    [Int]$TotalHigh
+    [Int]$TotalMedium
+    [Int]$TotalLow
+    [Int]$TotalInfo
+    
+    [Int]$SastTotal
+    [Int]$SastCritical
+    [Int]$SastHigh
+    [Int]$SastMedium
+    [Int]$SastLow
+    [Int]$SastInfo
+    
+    [Int]$KicsTotal
+    [Int]$KicsCritical
+    [Int]$KicsHigh
+    [Int]$KicsMedium
+    [Int]$KicsLow
+    [Int]$KicsInfo
+    
+    [Int]$ScaTotal
+    [Int]$ScaCritical
+    [Int]$ScaHigh
+    [Int]$ScaMedium
+    [Int]$ScaLow
+    [Int]$ScaInfo
+    
+    [Int]$PackagesTotal
+    [Int]$PackagesOutdated
+    [Int]$PackagesCritical
+    [Int]$PackagesHigh
+    [Int]$PackagesMedium
+    [Int]$PackagesLow
+    [Int]$PackagesInfo
+    
+    [Int]$ApiTotal
+    [Int]$ApiCritical
+    [Int]$ApiHigh
+    [Int]$ApiMedium
+    [Int]$ApiLow
+    [Int]$ApiInfo
+
+    [Int]$SecretsTotal
+    [Int]$SecretsCritical
+    [Int]$SecretsHigh
+    [Int]$SecretsMedium
+    [Int]$SecretsLow
+    [Int]$SecretsInfo
+    
+    [Int]$ContainersTotal
+    [Int]$ContainersCritical
+    [Int]$ContainersHigh
+    [Int]$ContainersMedium
+    [Int]$ContainersLow
+    [Int]$ContainersInfo
+    
+    #endregion    
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+    #region Constructors
+
+    SeverityCount ([Array]$summary) { $this.SetVariables($summary) }
+
+    #endregion
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+    #region Hidden Methods
+    
+    [void] Hidden SetVariables([Array]$summary) {
+        
+        $this.SastTotal = $summary.sastCounters.totalCounter
+        $this.Total += $summary.sastCounters.totalCounter     
+        $this.SetCounts($summary.sastCounters.severityCounters, "Sast")
+
+        $this.KicsTotal = $summary.kicsCounters.totalCounter
+        $this.Total += $summary.kicsCounters.totalCounter 
+        $this.SetCounts($summary.kicsCounters.severityCounters, "Kics")
+
+        $this.ScaTotal = $summary.scaCounters.totalCounter
+        $this.Total += $summary.scaCounters.totalCounter 
+        $this.SetCounts($summary.scaCounters.severityCounters, "Sca")
+        
+        $this.PackagesTotal = $summary.scaPackagesCounters.totalCounter
+        $this.Total += $summary.scaPackagesCounters.totalCounter 
+        $this.SetCounts($summary.scaPackagesCounters.severityCounters, "Packages")
+
+        $this.ApiTotal = $summary.apiSecCounters.totalCounter
+        $this.Total += $summary.apiSecCounters.totalCounter
+        $this.SetCounts($summary.apiSecCounters.severityCounters, "Api")
+
+        $this.SecretsTotal = $summary.microEnginesCounters.totalCounter
+        $this.Total += $summary.microEnginesCounters.totalCounter
+        $this.SetCounts($summary.microEnginesCounters.severityCounters, "Secrets")
+
+        $this.ContainersTotal = $summary.containersCounters.totalCounter
+        $this.Total += $summary.containersCounters.totalCounter
+        $this.SetCounts($summary.containersCounters.severityCounters, "Containers")
+
+
+    }
+
+    [void] Hidden SetCounts([Array]$severityCounter, [string]$name) {
+        foreach ($sc in $severityCounter) {
+            switch ($sc.severity) {
+                'CRITICAL' { 
+                    $this."$($name)Critical" = $sc.counter
+                    $this.TotalCritical += $sc.counter
+                }
+                'HIGH' { 
+                    $this."$($name)High" = $sc.counter
+                    $this.TotalHigh += $sc.counter
+                }
+                'MEDIUM' { 
+                    $this."$($name)Medium" = $sc.counter
+                    $this.TotalMedium += $sc.counter
+                }
+                'LOW' { 
+                    $this."$($name)Low" = $sc.counter
+                    $this.TotalLow += $sc.counter
+                }
+                'INFO' { 
+                    $this."$($name)Info" = $sc.counter
+                    $this.TotalInfo += $sc.counter
+                }
+            }
+        }
+    }
+
+    #endregion
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+}
+
+class SeverityCounters {
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+    #region Variables
+
+    [System.Collections.Generic.Dictionary[String, SeverityCount]]$SeverityCountersDict
+
+    #endregion
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+    #region Constructors
+
+    #Get All Results 
+    SeverityCounters([CxOneConnection]$conn, [System.Collections.Generic.List[Scan]]$ScansList) { $this.GetSeverityCountersDict($conn, $ScansList) }
+    
+    #endregion
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+    #region Hidden Methods
+
+    Hidden [void] GetSeverityCountersDict([CxOneConnection]$conn, [System.Collections.Generic.List[Scan]]$ScansList) {
+
+        $this.SeverityCountersDict = [System.Collections.Generic.Dictionary[String, SeverityCount]]::New()
+        
+        foreach ($scan in $ScansList) {    
+            $uri = "$($conn.BaseURI)/api/scan-summary/?scan-ids=$($scan.ScanID)"
+            $response = ApiCall { Invoke-RestMethod $uri -Method GET -Headers $conn.Headers } $conn
+            $this.SeverityCountersDict.Add($scan.ScanID, [SeverityCount]::new($response.scansSummaries))
+        }
     }
 
     #endregion
