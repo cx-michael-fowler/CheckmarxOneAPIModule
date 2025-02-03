@@ -6,8 +6,8 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     3.0
-    Date:        30/01/2025
+    Version:     3.1
+    Date:        03/02/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
     
@@ -18,6 +18,7 @@
     1.1        Added LOC to Scan object
     2.0        Added Severity Counters
     3.0        Updated to return Hash Tables rather than Lists to facilitate lookups
+    3.1        Updated vulerability counts to return as hash tables
     
 .Description
     The following functions are available for this module
@@ -57,7 +58,7 @@
     Get-AllProjects
         Details
             Function to return a Hash of all projects with Key = Project ID and Value = Project Object 
-            Returns a List of project objects
+            Returns a Hash of project objects
         Parameters
             CxOneConnObj - Checkmarx One connection object
             getBranches - Optional switch to determine if project branches should be returned for the projects
@@ -119,7 +120,7 @@
             Optional switch to return last scan for Main Branch (if set)
         Parameters
             CxOneConnObj - Checkmarx One connection object
-            projectsList - List of projects to return last of. Must be a list as provided by call above
+            projectsHash - Hash of projects to return last of. Must be a hash as provided by call above
             useMainBranch - optional switch to specify only return last scan on Main branch (if set)
         Example
             $scans = Get-LastScans $conn $projects
@@ -132,7 +133,7 @@
             branchesCSV must be a file path to a CSV with the header Projects,Branches and one project,branch per line
         Parameters
             CxOneConnObj - Checkmarx One connection object
-            projectsList - List of projects to return last of. Must be a list as provided by call above
+            projectsHash - Hash of projects to return last of. Must be a hash as provided by call above
             branchesCSV - file path to CSV file containing the mapping of projects to primary branch
         Example
             $scans = Get-LastScansForGivenBranches $conn $projects "C:\files\branches.csv"
@@ -150,13 +151,13 @@
 
     Get-SeverityCounters
         Details
-            Get a hash with the severity counters for a given list of Scans
+            Get a hash with the severity counters for a given hash of Scans
             Returns a hash with Key = Scan ID and Value = Severity Counter Object
         Parameters
             CxOneConnObj - Checkmarx One connection object
-            scanList - List of Scans to return counters for. Must be a list as provided by call above
+            scansHash - Hash of Scans to return counters for. Must be a hash as provided by call above
         Example
-            $results = Get-SeverityCounters $conn $scanList
+            $results = Get-SeverityCounters $conn $scanHash
 #>
 
 #endregion
@@ -1181,64 +1182,27 @@ class SeverityCount {
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Variables
     
-    [Int]$Total
-    [Int]$TotalCritical
-    [Int]$TotalHigh
-    [Int]$TotalMedium
-    [Int]$TotalLow
-    [Int]$TotalInfo
-    
-    [Int]$SastTotal
-    [Int]$SastCritical
-    [Int]$SastHigh
-    [Int]$SastMedium
-    [Int]$SastLow
-    [Int]$SastInfo
-    
-    [Int]$KicsTotal
-    [Int]$KicsCritical
-    [Int]$KicsHigh
-    [Int]$KicsMedium
-    [Int]$KicsLow
-    [Int]$KicsInfo
-    
-    [Int]$ScaTotal
-    [Int]$ScaCritical
-    [Int]$ScaHigh
-    [Int]$ScaMedium
-    [Int]$ScaLow
-    [Int]$ScaInfo
-    
-    [Int]$PackagesTotal
-    [Int]$PackagesOutdated
-    [Int]$PackagesCritical
-    [Int]$PackagesHigh
-    [Int]$PackagesMedium
-    [Int]$PackagesLow
-    [Int]$PackagesInfo
-    
-    [Int]$ApiTotal
-    [Int]$ApiCritical
-    [Int]$ApiHigh
-    [Int]$ApiMedium
-    [Int]$ApiLow
-    [Int]$ApiInfo
-
-    [Int]$SecretsTotal
-    [Int]$SecretsCritical
-    [Int]$SecretsHigh
-    [Int]$SecretsMedium
-    [Int]$SecretsLow
-    [Int]$SecretsInfo
-    
-    [Int]$ContainersTotal
-    [Int]$ContainersCritical
-    [Int]$ContainersHigh
-    [Int]$ContainersMedium
-    [Int]$ContainersLow
-    [Int]$ContainersInfo
+    [HashTable]$Totals  
+    [HashTable]$Sast
+    [HashTable]$Kics
+    [HashTable]$Sca
+    [HashTable]$Packages
+    [HashTable]$Api
+    [HashTable]$Secrets   
+    [HashTable]$Containers
     
     #endregion    
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+    #region Hidden Variables
+        
+        [Int]$Total
+        [Int]$TotalCritical
+        [Int]$TotalHigh
+        [Int]$TotalMedium
+        [Int]$TotalLow
+        [Int]$TotalInfo
+
+    #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Constructors
 
@@ -1249,59 +1213,80 @@ class SeverityCount {
     #region Hidden Methods
     
     [void] Hidden SetVariables([Array]$summary) {
+                
+        $this.Sast = $this.CreateHashAndIncrementTotal($summary.sastCounters.totalCounter)    
+        $this.SetCounts($summary.sastCounters.severityCounters, $this.Sast)
+
+        $this.Kics = $this.CreateHashAndIncrementTotal($summary.kicsCounters.totalCounter) 
+        $this.SetCounts($summary.kicsCounters.severityCounters, $this.Kics)
+
+        $this.Sca = $this.CreateHashAndIncrementTotal($summary.scaCounters.totalCounter)
+        $this.SetCounts($summary.scaCounters.severityCounters, $this.Sca)
         
-        $this.SastTotal = $summary.sastCounters.totalCounter
-        $this.Total += $summary.sastCounters.totalCounter     
-        $this.SetCounts($summary.sastCounters.severityCounters, "Sast")
+        $this.Packages = $this.CreateHashAndIncrementTotal($summary.scaPackagesCounters.totalCounter)
+        if ($summary.scaPackagesCounters.totalPackagesCounter) { 
+            $this.Packages.Add("Total Packages", $summary.scaPackagesCounters.totalPackagesCounter)
+        }
+        else { $this.Packages.Add("Total Packages", $null) }
+        if ($summary.scaPackagesCounters.outdatedCounter) {
+            $this.Packages.Add("Outdated Packages", $summary.scaPackagesCounters.outdatedCounter)
+        }
+        else { $this.Packages.Add("Outdated Packages", $null) }
+        $this.SetCounts($summary.scaPackagesCounters.severityCounters, $this.Packages)
 
-        $this.KicsTotal = $summary.kicsCounters.totalCounter
-        $this.Total += $summary.kicsCounters.totalCounter 
-        $this.SetCounts($summary.kicsCounters.severityCounters, "Kics")
+        $this.Api = $this.CreateHashAndIncrementTotal($summary.apiSecCounters.totalCounter)
+        $this.SetCounts($summary.apiSecCounters.severityCounters, $this.Api)
 
-        $this.ScaTotal = $summary.scaCounters.totalCounter
-        $this.Total += $summary.scaCounters.totalCounter 
-        $this.SetCounts($summary.scaCounters.severityCounters, "Sca")
-        
-        $this.PackagesTotal = $summary.scaPackagesCounters.totalCounter
-        $this.Total += $summary.scaPackagesCounters.totalCounter 
-        $this.SetCounts($summary.scaPackagesCounters.severityCounters, "Packages")
+        $this.Secrets = $this.CreateHashAndIncrementTotal($summary.microEnginesCounters.totalCounter)
+        $this.SetCounts($summary.microEnginesCounters.severityCounters, $this.Secrets)
 
-        $this.ApiTotal = $summary.apiSecCounters.totalCounter
-        $this.Total += $summary.apiSecCounters.totalCounter
-        $this.SetCounts($summary.apiSecCounters.severityCounters, "Api")
+        $this.Containers = $this.CreateHashAndIncrementTotal($summary.containersCounters.totalCounter)
+        $this.SetCounts($summary.containersCounters.severityCounters, $this.Containers)
 
-        $this.SecretsTotal = $summary.microEnginesCounters.totalCounter
-        $this.Total += $summary.microEnginesCounters.totalCounter
-        $this.SetCounts($summary.microEnginesCounters.severityCounters, "Secrets")
-
-        $this.ContainersTotal = $summary.containersCounters.totalCounter
-        $this.Total += $summary.containersCounters.totalCounter
-        $this.SetCounts($summary.containersCounters.severityCounters, "Containers")
-
-
+        $this.Totals = @{
+            total = $this.Total
+            Critical = $this.TotalCritical
+            High = $this.TotalHigh
+            Medium = $this.TotalMedium
+            Low = $this.TotalLow
+            Info = $this.TotalInfo
+        }
     }
 
-    [void] Hidden SetCounts([Array]$severityCounter, [string]$name) {
+    [Hashtable] Hidden CreateHashAndIncrementTotal ( [Nullable[System.Int32]] $totalCount) { 
+        $this.Total += $totalCount
+        if ($totalCount -eq 0) { $totalCount = $null }
+            return @{ 
+                total = $totalCount
+                Critical = $null
+                High = $null
+                Medium = $null
+                Low = $null
+                Info = $null
+        }
+    }
+
+    [void] Hidden SetCounts([Array]$severityCounter, [Hashtable]$hash) {
         foreach ($sc in $severityCounter) {
             switch ($sc.severity) {
                 'CRITICAL' { 
-                    $this."$($name)Critical" = $sc.counter
+                    $hash.Critical = $sc.counter
                     $this.TotalCritical += $sc.counter
                 }
                 'HIGH' { 
-                    $this."$($name)High" = $sc.counter
+                    $hash.High = $sc.counter
                     $this.TotalHigh += $sc.counter
                 }
                 'MEDIUM' { 
-                    $this."$($name)Medium" = $sc.counter
+                    $hash.Medium = $sc.counter
                     $this.TotalMedium += $sc.counter
                 }
                 'LOW' { 
-                    $this."$($name)Low" = $sc.counter
+                    $hash.Low = $sc.counter
                     $this.TotalLow += $sc.counter
                 }
                 'INFO' { 
-                    $this."$($name)Info" = $sc.counter
+                    $hash.Info = $sc.counter
                     $this.TotalInfo += $sc.counter
                 }
             }
