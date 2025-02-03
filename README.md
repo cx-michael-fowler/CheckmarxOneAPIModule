@@ -120,8 +120,7 @@ The following functions are available for this module
     Get-ScanResults
         Details
             Get the results for a given scan ID
-            Returns a hash of result objects
-            Key = Scan ID and Value = Result Object
+            Returns a list of result objects
         Parameters
             CxOneConnObj - Checkmarx One connection object
             scanId - The ID of the scan results to return
