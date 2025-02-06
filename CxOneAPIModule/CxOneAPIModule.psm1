@@ -20,6 +20,7 @@
     3.0        Updated to return Hash Tables rather than Lists to facilitate lookups
     3.1        Updated vulerability counts to return as hash tables
     3.2        Update results to return a List of results objects
+    3.3        Update Connection class to return header that works for SCA endpoints
     
 .Description
     The following functions are available for this module
@@ -634,6 +635,8 @@ class CxOneConnection {
         $this.Headers = @{
             accept = "application/json; version=1.0"
             Authorization = "Bearer $accessToken"
+            "Cx-Authentication-Type" = "service"
+            "Content-Type"  = "application/json"
         }
 
         if ($setExpiry) {
