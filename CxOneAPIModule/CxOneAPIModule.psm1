@@ -6,7 +6,7 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     3.4
+    Version:     4.0
     Date:        21/02/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
@@ -20,8 +20,9 @@
     3.0        Updated to return Hash Tables rather than Lists to facilitate lookups
     3.1        Updated vulerability counts to return as hash tables
     3.2        Update results to return a List of results objects
-    3.3        Update Connection class to return header that works for SCA endpoints
+    3.3        Update Connection class to return header that support SCA endpoints
     3.4        Minor bug fix
+    4.0        Added function to return scans by Scan IDs
     
 .Description
     The following functions are available for this module
@@ -115,6 +116,16 @@
             scanDays - Integer value between 0 and 366 to specifiy the number of days to return scan for. 0 returns all scans
         Example
             $scans = Get-AllScans $conn "Completed,Partial" 90
+
+    Get-ScansByIds
+        Details
+            Function to get a hash scans for a provided as a CSV string of Scan IDs
+            Key = Scan ID and Value = Scan Object
+        Parameters
+            CxOneConnObj - Checkmarx One connection object
+            ScanIds - CSV string of scan IDs
+        Example
+            $scans = Get-Get-ScansByIds $conn "4bf2d7fc-8a7c-420d-ac1a-7c62cebb7bbb,141cf46f-1781-45ab-8cee-0f5856337b2f"
         
     Get-LastScans
         Details
@@ -260,7 +271,7 @@ Function Get-AllScans {
         [String]$statuses
     )
 
-    return ([Scans]::new($CxOneConnObj, $statuses)).ScansHash
+    return ([Scans]::new($CxOneConnObj, $statuses, $null)).ScansHash
 }
 
 #Get all scans filtered by CSV string of statuses and number of days to return. If all statuses are required pass $null or ""
@@ -281,6 +292,19 @@ Function Get-AllScansByDays {
     )
     
     return ([Scans]::new($CxOneConnObj, $statuses, $scanDays)).ScansHash
+}
+
+#Get scans by given CSV string of scan IDS.
+Function Get-ScansByIds {
+    Param(
+        [Parameter(Mandatory=$true)]
+        [CxOneConnection]$CxOneConnObj,
+
+        [Parameter(Mandatory=$true)]
+        [String]$scanIds
+    )
+    
+    return ([Scans]::new($CxOneConnObj, $null, $scanIds)).ScansHash
 }
 
 #Get the last scan for the projects provided in the projects list. 
@@ -971,16 +995,16 @@ class Scans {
     }
     
     #Get List of scans using a comma seperated string of statuses to filter by
-    Scans([CxOneConnection]$conn, [String]$statuses) { $this.GetScansHash($conn, $statuses, 0) }
+    Scans([CxOneConnection]$conn, [String]$statuses, [String]$scanIds) { $this.GetScansHash($conn, $statuses, 0, $scanIds) }
 
     #Get List of scans using a comma seperated string of statuses to filter by and number of days to retrieve
-    Scans([CxOneConnection]$conn, [String]$statuses, [Int]$scanDays) { $this.GetScansHash($conn, $statuses, $scanDays) }
+    Scans([CxOneConnection]$conn, [String]$statuses, [Int]$scanDays) { $this.GetScansHash($conn, $statuses, $scanDays, $null) }
     
     #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Hidden Methods
     
-    [void] Hidden GetScansHash([CxOneConnection]$conn, [String]$statuses, [Int]$scanDays) {
+    [void] Hidden GetScansHash([CxOneConnection]$conn, [String]$statuses, [Int]$scanDays, [String]$scanIds) {
         
         Write-Verbose "Retrieving scans"
 
@@ -994,9 +1018,9 @@ class Scans {
             Write-Verbose "Retrieving scans Offset=$($this.Offset)"
         
             $uri = "$($conn.baseUri)/api/scans/?offset=$($this.Offset)&limit=$($this.Limit)"
-            if ($scanDays) { $uri += "&from-date=$fromDate" }
-        
+            if ($scanDays) { $uri += "&from-date=$fromDate" }      
             if ($statuses) { $uri += "&statuses=$statuses" }
+            if ($scanIds) { $uri += "&scan-ids=$scanIds" }
            
             $response = ApiCall { Invoke-WebRequest $uri -Method GET -Headers $conn.Headers} $conn
             $json = ([System.Web.Script.Serialization.JavaScriptSerializer]::New()).DeserializeObject($response) 
