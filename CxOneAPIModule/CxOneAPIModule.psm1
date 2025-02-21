@@ -6,8 +6,8 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     3.2
-    Date:        04/02/2025
+    Version:     3.4
+    Date:        21/02/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
     
@@ -21,6 +21,7 @@
     3.1        Updated vulerability counts to return as hash tables
     3.2        Update results to return a List of results objects
     3.3        Update Connection class to return header that works for SCA endpoints
+    3.4        Minor bug fix
     
 .Description
     The following functions are available for this module
@@ -259,7 +260,7 @@ Function Get-AllScans {
         [String]$statuses
     )
 
-    return ([Scans]::new($CxOneConnObj, $statuses)).ScansList
+    return ([Scans]::new($CxOneConnObj, $statuses)).ScansHash
 }
 
 #Get all scans filtered by CSV string of statuses and number of days to return. If all statuses are required pass $null or ""
