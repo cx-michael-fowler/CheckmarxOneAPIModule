@@ -23,6 +23,7 @@
     3.3        Update Connection class to return header that support SCA endpoints
     3.4        Minor bug fix
     4.0        Added function to return scans by Scan IDs
+    4.1        Minor bug fix
     
 .Description
     The following functions are available for this module
@@ -1193,9 +1194,9 @@ Class Results {
             foreach ($r in $response.results) { $this.ResultsList.Add([Result]::new($r)) }
 
             Write-Verbose "$($this.Limit) Results Retrieved with Offset: $($this.Offset)"
-            $this.Offset += $this.Limit
+            $this.Offset++
             
-        } while ($this.Offset -lt $this.TotalCount)
+        } while ($this.Offset * $this.Limit -lt $this.TotalCount)
     }
 
     #endregion
