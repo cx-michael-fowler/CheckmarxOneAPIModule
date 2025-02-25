@@ -6,7 +6,7 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     4.0
+    Version:     4.2
     Date:        21/02/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
@@ -24,6 +24,7 @@
     3.4        Minor bug fix
     4.0        Added function to return scans by Scan IDs
     4.1        Minor bug fix
+    4.2        Modified page sizes to improve performance
     
 .Description
     The following functions are available for this module
@@ -797,8 +798,8 @@ class Projects {
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Hidden Variables
 
-    Hidden [Int]$Offset
-    Hidden [Int]$Limit
+    Hidden [Int]$Offset = 0
+    Hidden [Int]$Limit = 2000
     Hidden [Int]$FilteredTotalCount
     Hidden [Int]$TotalCount
 
@@ -821,9 +822,6 @@ class Projects {
     [void] Hidden GetProjectHash([CxOneConnection]$conn, [String]$projectIds, [String]$projectNames, [switch]$getBranches) {
         
         Write-Verbose "Retrieving projects"
-        
-        $this.Offset = 0
-        $this.Limit = 100
 
         $this.projectsHash= [System.Collections.Generic.Dictionary[String, Project]]::New()
 
@@ -862,9 +860,7 @@ class Projects {
     [void] Hidden GetBranches([CxOneConnection]$conn) {
         
         foreach ($p in $this.ProjectsList) {
-            
-            $this.Offset = 0
-            $this.Limit = 100
+
             $continue = $false
             
             do {
@@ -978,7 +974,7 @@ class Scans {
     #region Hidden Variables
 
     Hidden [Int]$Offset = 0
-    Hidden [Int]$Limit = 100
+    Hidden [Int]$Limit = 2000
     Hidden [Int]$FilteredTotalCount
     Hidden [Int]$TotalCount
 
@@ -1162,7 +1158,7 @@ Class Results {
     #region Hidden Variables
 
     Hidden [Int]$Offset = 0
-    Hidden [Int]$Limit = 20
+    Hidden [Int]$Limit = 2000
 
     #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
