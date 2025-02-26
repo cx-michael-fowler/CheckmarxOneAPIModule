@@ -6,8 +6,8 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     4.2
-    Date:        21/02/2025
+    Version:     4.3
+    Date:        26/02/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
     
@@ -25,6 +25,7 @@
     4.0        Added function to return scans by Scan IDs
     4.1        Minor bug fix
     4.2        Modified page sizes to improve performance
+    4.3        Minor bug fix     
     
 .Description
     The following functions are available for this module
@@ -760,7 +761,7 @@ class Project {
         try { 
             $this.TagsString = $null
             foreach ($tag in $project.tags.GetEnumerator()) { 
-                if ($null -ne $this.BranchesString) { $this.BranchesString += ";" }
+                if (-NOT ([string]::IsNullOrEmpty($this.TagsString))) { $this.TagsString += ";" }
                 if ($tag.Value -eq "") { $this.TagsString += $tag.Key }
                 else { $this.TagsString += $tag.Key + ":" + $tag.Value }     
             }
@@ -776,7 +777,7 @@ class Project {
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Public Methods
     
-    [void] AddBranches([Array]$branches) {
+    [void]AddBranches([Array]$branches) {
         $this.Branches += $branches
         foreach ($branch in $branches) { 
             if ($null -ne $this.BranchesString) { $this.BranchesString += ";" }
@@ -798,7 +799,7 @@ class Projects {
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Hidden Variables
 
-    Hidden [Int]$Offset = 0
+    Hidden [Int]$Offset
     Hidden [Int]$Limit = 2000
     Hidden [Int]$FilteredTotalCount
     Hidden [Int]$TotalCount
@@ -823,6 +824,7 @@ class Projects {
         
         Write-Verbose "Retrieving projects"
 
+        $this.Offset = 0
         $this.projectsHash= [System.Collections.Generic.Dictionary[String, Project]]::New()
 
         do {
@@ -859,16 +861,17 @@ class Projects {
 
     [void] Hidden GetBranches([CxOneConnection]$conn) {
         
-        foreach ($p in $this.ProjectsList) {
-
+        foreach ($p in $this.ProjectsHash.keys) {
+            
+            $this.Offset = 0
             $continue = $false
             
             do {
-                $uri = "$($conn.baseUri)/api/projects/branches?offset=$($this.Offset)&limit=$($this.Limit)&project-id=$($p.ProjectID)"
+                $uri = "$($conn.baseUri)/api/projects/branches?offset=$($this.Offset)&limit=$($this.Limit)&project-id=$p"
                 $response = ApiCall { Invoke-RestMethod $uri -Method GET -Headers $conn.Headers } $conn
 
                 if ($response -ne "null") {
-                    $p.AddBranches($response)
+                    $this.ProjectsHash[$p].AddBranches($response)
                     $this.Offset += $this.Limit
                     $continue = $true
                 }
@@ -1005,6 +1008,7 @@ class Scans {
         
         Write-Verbose "Retrieving scans"
 
+        $this.Offset = 0
         $this.ScansHash = [System.Collections.Generic.Dictionary[String, Scan]]::New()
         $fromDate = ""
         
@@ -1037,7 +1041,8 @@ class Scans {
 
     [void] Hidden GetLastScansHash([CxOneConnection]$conn, [System.Collections.Generic.Dictionary[String, Project]]$projectsHash,
                                    [switch] $useMainBranch, [string]$branchesCSV) {
-
+        
+        $this.Offset = 0
         $this.ScansHash= [System.Collections.Generic.DIctionary[String, Scan]]::New()
         $branches = @()
 
@@ -1157,7 +1162,7 @@ Class Results {
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Hidden Variables
 
-    Hidden [Int]$Offset = 0
+    Hidden [Int]$Offset
     Hidden [Int]$Limit = 2000
 
     #endregion
@@ -1175,6 +1180,7 @@ Class Results {
         
         Write-Verbose "Retrieving results"
 
+        $this.Offset = 0
         $this.ResultsList = [System.Collections.Generic.List[Result]]::New()
 
         do {
