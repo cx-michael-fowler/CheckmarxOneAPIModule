@@ -27,7 +27,7 @@ The following functions are available for this module
     New-SilentConnection
         Details
             Function to create a Checkmarx Connection object with a provided API Key
-            Connection object is needed for additional calls in modeule
+            Connection object is needed for additional calls in module
             Connection object contains the BaseURI and Authorisdation Headers
         Parameters
             apikey - Checkmarx One API key
