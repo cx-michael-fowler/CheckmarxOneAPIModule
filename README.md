@@ -66,6 +66,15 @@ The following functions are available for this module
         Example
             $projects = Get-AllProjects $conn "<project_id_1>,<project_id_2>,<project_id_3>"
         
+     Get-Applications
+        Details
+            Function to get a hash of all applications
+            Key = Application ID and Value = Application Object 
+        Parameters
+            CxOneConnObj - Checkmarx One connection object
+        Example
+            $applications = Get-Applications $conn
+    
     Get-AllScans
         Details
             Function to get a hash of scans filtered by statuses provided as a CSV string
