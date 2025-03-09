@@ -6,8 +6,8 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     4.3
-    Date:        26/02/2025
+    Version:     5.0
+    Date:        10/03/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
     
@@ -25,7 +25,9 @@
     4.0        Added function to return scans by Scan IDs
     4.1        Minor bug fix
     4.2        Modified page sizes to improve performance
-    4.3        Minor bug fix     
+    4.3        Minor bug fix
+    4.4        Removed comments from reults object as this field currently does not return results
+    5.0        Added functionality to return hash of Applications
     
 .Description
     The following functions are available for this module
@@ -93,6 +95,15 @@
             getBranches - Optional switch to determine if project branches should be returned for the projects
         Example
             $projects = Get-AllProjects $conn "<project_id_1>,<project_id_2>,<project_id_3>"
+
+    Get-Applications
+        Details
+            Function to get a hash of all applications
+            Key = Application ID and Value = Application Object 
+        Parameters
+            CxOneConnObj - Checkmarx One connection object
+        Example
+            $applications = Get-Applications $conn
         
     Get-AllScans
         Details
@@ -217,7 +228,7 @@ Function New-SilentConnection {
     return [CxOneConnection]::new($apiKey)
 }
 
-#Function to return a List of Project Objects
+#Function to return a Hash of Project Objects
 Function Get-AllProjects {
     Param(
         [Parameter(Mandatory=$true)]
@@ -230,7 +241,7 @@ Function Get-AllProjects {
     return ([Projects]::new($CxOneConnObj, $getBranches)).ProjectsHash
 }
 
-#Function to return a filtered list of Projects using comma seperated string of names.
+#Function to return a filtered Hash of Projects using comma seperated string of names.
 Function Get-ProjectsByNames {
     Param(
         [Parameter(Mandatory=$true)]
@@ -246,7 +257,7 @@ Function Get-ProjectsByNames {
     return ([Projects]::new($CxOneConnObj, $null, $projectNames, $getBranches)).ProjectsHash
 }
 
-#Function to return a filtered list of Projects using comma seperated string of IDs.
+#Function to return a filtered Hash of Projects using comma seperated string of IDs.
 Function Get-ProjectsByIds {
     Param(
         [Parameter(Mandatory=$true)]
@@ -261,6 +272,16 @@ Function Get-ProjectsByIds {
     )
 
     return ([Projects]::new($CxOneConnObj, $projectIds, $null, $getBranches)).ProjectsHash
+}
+
+#Function to return a Hash of Application Objects
+Function Get-Applications {
+    Param(
+        [Parameter(Mandatory=$true)]
+        [CxOneConnection]$CxOneConnObj
+    )
+
+    return ([Applications]::new($CxOneConnObj)).ApplicationsHash
 }
 
 #Get all scans filtered by CSV string of statuses. If all statuses are required pass $null or ""
@@ -310,7 +331,7 @@ Function Get-ScansByIds {
     return ([Scans]::new($CxOneConnObj, $null, $scanIds)).ScansHash
 }
 
-#Get the last scan for the projects provided in the projects list. 
+#Get the last scan for the projects provided in the projects hash. 
 Function Get-LastScans {
     Param(
         [Parameter(Mandatory=$true)]
@@ -326,7 +347,7 @@ Function Get-LastScans {
     return ([Scans]::new($CxOneConnObj, $projectsHash, $useMainBranch, $null)).ScansHash
 }
 
-#Get the last scan for the projects provided in the projects list. Takes a filepath to a CSV containing the mapping of projects to branch 
+#Get the last scan for the projects provided in the projects hash. Takes a filepath to a CSV containing the mapping of projects to branch 
 Function Get-LastScansForGivenBranches {
     Param(
         [Parameter(Mandatory=$true)]
@@ -720,6 +741,8 @@ class Project {
     [String]$RepoURL
     [String]$MainBranch
     [String]$Origin
+    [string]$ScmRepoId
+    [string]$RepoId
     [System.Collections.IDictionary]$Tags
     [string]$TagsString
     [Int]$Criticality
@@ -727,6 +750,7 @@ class Project {
     [String]$ImportedProjName
     [Array]$Branches
     [string]$BranchesString
+    [Array]$ApplicationIds
  
     #endregion    
     #------------------------------------------------------------------------------------------------------------------------------------------------
@@ -756,6 +780,8 @@ class Project {
         $this.RepoURL = $project.repoURL
         $this.MainBranch = $project.mainBranch
         $this.Origin = $project.origin
+        $this.ScmRepoId = $project.scmRepoId
+        $this.RepoId = $project.repoId
         $this.Tags = $project.tags
   
         try { 
@@ -771,6 +797,7 @@ class Project {
         $this.Criticality = $project.criticality
         $this.PrivatePackage = [bool]$project.privatePackage
         $this.ImportedProjName = $project.imported_proj_name
+        $this.ApplicationIds = $project.applicationIds
     }
 
     #endregion    
@@ -809,18 +836,18 @@ class Projects {
     #region Constructors
 
     #Get All Projects
-    Projects([CxOneConnection]$conn, [switch]$getBranches) { $this.GetProjectHash($conn, $null, $null, $getBranches) }
+    Projects([CxOneConnection]$conn, [switch]$getBranches) { $this.GetProjectsHash($conn, $null, $null, $getBranches) }
     
     #Get filtered List of projects - Using both Name and ID will not return any values
     Projects([CxOneConnection]$conn, [String]$projectIds, [String]$projectNames, [switch]$getBranches) { 
-        $this.GetProjectHash($conn, $projectIds, $projectNames, $getBranches)
+        $this.GetProjectsHash($conn, $projectIds, $projectNames, $getBranches)
     }
     
     #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Hidden Methods
 
-    [void] Hidden GetProjectHash([CxOneConnection]$conn, [String]$projectIds, [String]$projectNames, [switch]$getBranches) {
+    [void] Hidden GetProjectsHash([CxOneConnection]$conn, [String]$projectIds, [String]$projectNames, [switch]$getBranches) {
         
         Write-Verbose "Retrieving projects"
 
@@ -879,6 +906,129 @@ class Projects {
             
             } while ($continue)
         }
+    }
+
+    #endregion
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+}
+
+#endregion
+#----------------------------------------------------------------------------------------------------------------------------------------------------
+#region Application Classes
+
+class Application {
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+    #region Variables    
+        
+    [String]$ApplicationID
+    [String]$ApplicationName
+    [String]$Description
+    [Nullable[datetime]]$CreatedAt
+    [Nullable[datetime]]$UpdatedAt
+    [Int]$Criticality
+    [System.Collections.IDictionary]$Tags
+    [string]$TagsString
+    [Array]$ProjectIds
+    [String]$ProjectNames
+
+    #endregion    
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+    #region Constructors
+
+    Application ([PSCustomObject]$application) { $this.SetVariables($application) }
+
+    #endregion
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+    #region Hidden Methods
+    
+    [void] Hidden SetVariables([PSCustomObject]$application) {
+           
+        $this.ApplicationID = $application.id        
+        $this.ApplicationName = $application.name
+        $this.Description = $application.description
+        
+        try { $this.CreatedAt = [DateTime]$application.createdAt }
+        catch { $this.CreatedAt = $null }
+    
+        try { $this.UpdatedAt = [DateTime]$application.updatedAt }
+        catch { $this.UpdatedAt = $null }
+                       
+        $this.Criticality = $application.criticality
+        $this.Tags = $application.tags
+  
+        try { 
+            $this.TagsString = $null
+            foreach ($tag in $application.tags.GetEnumerator()) { 
+                if (-NOT ([string]::IsNullOrEmpty($this.TagsString))) { $this.TagsString += ";" }
+                if ($tag.Value -eq "") { $this.TagsString += $tag.Key }
+                else { $this.TagsString += $tag.Key + ":" + $tag.Value }     
+            }
+        }
+        catch {}
+
+        $this.ProjectIds = $application.projectIds
+        $this.ProjectNames = ($application.rules | Where-Object { $_.type -eq "project.name.in" } | select-object -First 1).value
+    }
+
+    #endregion    
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+}
+
+class Applications {
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+    #region Variables
+
+    [System.Collections.Generic.Dictionary[String, Application]]$ApplicationsHash
+
+    #endregion
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+    #region Hidden Variables
+
+    Hidden [Int]$Offset
+    Hidden [Int]$Limit = 2000
+    Hidden [Int]$FilteredTotalCount
+    Hidden [Int]$TotalCount
+
+    #endregion
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+    #region Constructors
+
+    #Get All Applications
+    Applications([CxOneConnection]$conn) { $this.GetApplicationsHash($conn) }
+    
+    
+    #endregion
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+    #region Hidden Methods
+
+    [void] Hidden GetApplicationsHash([CxOneConnection]$conn) {
+        
+        Write-Verbose "Retrieving projects"
+
+        $this.Offset = 0
+        $this.ApplicationsHash = [System.Collections.Generic.Dictionary[String, Application]]::New()
+
+        do {
+    
+            Write-Verbose "Retrieving applications Offset=$($this.Offset)"
+        
+            $uri = "$($conn.baseUri)/api/applications/?offset=$($this.Offset)&limit=$($this.Limit)"
+        
+            
+            $response = ApiCall { Invoke-WebRequest $uri -Method GET -Headers $conn.Headers} $conn
+            $json = ([System.Web.Script.Serialization.JavaScriptSerializer]::New()).DeserializeObject($response) 
+        
+            if ($this.Offset -eq 0) { 
+                $this.FilteredTotalCount = $json.filteredTotalCount
+                $this.TotalCount = $json.totalCount   
+            }
+
+            foreach ($app in $json.applications) { $this.ApplicationsHash.Add($app.id, [Application]::new($app)) }
+
+            Write-Verbose "$($this.Limit) Applications Retrieved with Offset: $($this.Offset)"
+            $this.Offset += $this.Limit
+            
+        } while ($this.Offset -lt $this.filteredTotalCount)
     }
 
     #endregion
@@ -1108,7 +1258,6 @@ class Result {
 	[string]$Group
 	[string]$LanguageName
 	[string]$CweId
-   [string]$Comments
 
     #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1144,7 +1293,6 @@ class Result {
         $this.Group = $result.data.group
         $this.LanguageName = $result.data.languageName
         $this.CweId = $result.vulnerabilityDetails.cweId
-        $this.Comments = $result.comments
     }
 
     #endregion    
