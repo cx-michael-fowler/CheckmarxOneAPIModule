@@ -6,7 +6,7 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     5.0
+    Version:     5.1
     Date:        10/03/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
@@ -28,6 +28,7 @@
     4.3        Minor bug fix
     4.4        Removed comments from reults object as this field currently does not return results
     5.0        Added functionality to return hash of Applications
+    5.1        Added Applications Id String to project object
     
 .Description
     The following functions are available for this module
@@ -751,6 +752,7 @@ class Project {
     [Array]$Branches
     [string]$BranchesString
     [Array]$ApplicationIds
+    [String]$ApplicationIdsString
  
     #endregion    
     #------------------------------------------------------------------------------------------------------------------------------------------------
@@ -798,6 +800,9 @@ class Project {
         $this.PrivatePackage = [bool]$project.privatePackage
         $this.ImportedProjName = $project.imported_proj_name
         $this.ApplicationIds = $project.applicationIds
+
+        try { $this.ApplicationIdsString = ($project.applicationIds) -join ";" }
+        catch { $this.ApplicationIdsString = $null }
     }
 
     #endregion    
