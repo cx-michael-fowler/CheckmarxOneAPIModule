@@ -6,7 +6,7 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     5.1
+    Version:     5.2
     Date:        10/03/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
@@ -26,10 +26,11 @@
     4.1        Minor bug fix
     4.2        Modified page sizes to improve performance
     4.3        Minor bug fix
-    4.4        Removed comments from reults object as this field currently does not return results
+    4.4        Removed comments from results object as this field currently does not return results
     5.0        Added functionality to return hash of Applications
     5.1        Added Applications Id String to project object
-    
+    5.2        Added Projects IDs string to applications
+
 .Description
     The following functions are available for this module
     
@@ -934,6 +935,7 @@ class Application {
     [System.Collections.IDictionary]$Tags
     [string]$TagsString
     [Array]$ProjectIds
+    [Array]$ProjectIdsString
     [String]$ProjectNames
 
     #endregion    
@@ -972,6 +974,9 @@ class Application {
         catch {}
 
         $this.ProjectIds = $application.projectIds
+        try { $this.ProjectIdsString = ($application.projectIds) -join ";" }
+        catch { $this.ProjectIdsString = $null }
+
         $this.ProjectNames = ($application.rules | Where-Object { $_.type -eq "project.name.in" } | select-object -First 1).value
     }
 
