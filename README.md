@@ -92,7 +92,7 @@ The following functions are available for this module
             Function to get a hash of all scans filtered by statuses provided as a CSV string and number of days.
             Key = Scan ID and Value = Scan Object
             Valid Statuses are Queued, Running, Completed, Failed, Partial, Canceled
-            If all Statuses are required pass $null or empty string for statuses
+            If all Statuses are required use "All"
             Number of days must be a integer greater or equal to 0. 0 will return all days
         Parameters
             CxOneConnObj - Checkmarx One connection object
@@ -100,16 +100,18 @@ The following functions are available for this module
             scanDays - Integer value between 0 and 366 to specifiy the number of days to return scan for. 0 returns all scans
         Example
             $scans = Get-AllScans $conn "Completed,Partial" 90
-            
+
     Get-ScansByIds
         Details
             Function to get a hash scans for a provided as a CSV string of Scan IDs
             Key = Scan ID and Value = Scan Object
+            If all Statuses are required use "All"
         Parameters
             CxOneConnObj - Checkmarx One connection object
+            statuses - CSV string of scan statuses to filter results
             ScanIds - CSV string of scan IDs
         Example
-            $scans = Get-Get-ScansByIds $conn "4bf2d7fc-8a7c-420d-ac1a-7c62cebb7bbb,141cf46f-1781-45ab-8cee-0f5856337b2f"
+            $scans = Get-Get-ScansByIds $conn "All" "4bf2d7fc-8a7c-420d-ac1a-7c62cebb7bbb,141cf46f-1781-45ab-8cee-0f5856337b2f"
         
     Get-LastScans
         Details
