@@ -6,7 +6,7 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     5.2
+    Version:     5.3
     Date:        10/03/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
@@ -30,6 +30,7 @@
     5.0        Added functionality to return hash of Applications
     5.1        Added Applications Id String to project object
     5.2        Added Projects IDs string to applications
+    5.3        Bug Fix
 
 .Description
     The following functions are available for this module
@@ -139,9 +140,10 @@
             Key = Scan ID and Value = Scan Object
         Parameters
             CxOneConnObj - Checkmarx One connection object
+            statuses - CSV string of scan statuses to filter results
             ScanIds - CSV string of scan IDs
         Example
-            $scans = Get-Get-ScansByIds $conn "4bf2d7fc-8a7c-420d-ac1a-7c62cebb7bbb,141cf46f-1781-45ab-8cee-0f5856337b2f"
+            $scans = Get-Get-ScansByIds $conn "All" "4bf2d7fc-8a7c-420d-ac1a-7c62cebb7bbb,141cf46f-1781-45ab-8cee-0f5856337b2f"
         
     Get-LastScans
         Details
@@ -308,29 +310,34 @@ Function Get-AllScansByDays {
 
         [Parameter(Mandatory=$true)]
         [AllowEmptyString()]
-        [ValidateSet("Queued", "Running", "Completed", "Failed", "Partial", "Canceled", IgnoreCase = $false)]
+        [ValidateSet("Queued", "Running", "Completed", "Failed", "Partial", "Canceled", "All", IgnoreCase = $false)]
         [String]$statuses,
 
         [Parameter(Mandatory=$true)]
         [AllowEmptyString()]
         [ValidateRange(1,366)]
-        [String]$scanDays
+        [Int]$scanDays
     )
     
     return ([Scans]::new($CxOneConnObj, $statuses, $scanDays)).ScansHash
 }
 
-#Get scans by given CSV string of scan IDS.
+#Get scans filtered by status and scan Ids.
 Function Get-ScansByIds {
     Param(
         [Parameter(Mandatory=$true)]
         [CxOneConnection]$CxOneConnObj,
 
         [Parameter(Mandatory=$true)]
+        [AllowEmptyString()]
+        [ValidateSet("Queued", "Running", "Completed", "Failed", "Partial", "Canceled", "All", IgnoreCase = $false)]
+        [String]$statuses,
+
+        [Parameter(Mandatory=$true)]
         [String]$scanIds
     )
     
-    return ([Scans]::new($CxOneConnObj, $null, $scanIds)).ScansHash
+    return ([Scans]::new($CxOneConnObj, $statuses, $scanIds)).ScansHash
 }
 
 #Get the last scan for the projects provided in the projects hash. 
@@ -1148,16 +1155,18 @@ class Scans {
     #Get All Scans
     Scans() {}
     
-    Scans([CxOneConnection]$conn) { $this.GetScansList($conn, $null) }
+    # Get scnas with no filters
+    Scans([CxOneConnection]$conn) { $this.GetScansHash($conn, $null, $null, $null) }
 
+    #get Last scans for given hash of projects with option to filter by main branch
     Scans([CxOneConnection]$conn, [System.Collections.Generic.Dictionary[String, Project]]$projectsHash, [Switch]$useMainBranch, [String]$branchesCSV) { 
         $this.GetLastScansHash($conn , $projectsHash, $useMainBranch, $branchesCSV)
     }
     
-    #Get List of scans using a comma seperated string of statuses to filter by
+    #Get List of scans filtered by status and scan ids
     Scans([CxOneConnection]$conn, [String]$statuses, [String]$scanIds) { $this.GetScansHash($conn, $statuses, 0, $scanIds) }
 
-    #Get List of scans using a comma seperated string of statuses to filter by and number of days to retrieve
+    #Get List of scans filitered by statuses and number of days
     Scans([CxOneConnection]$conn, [String]$statuses, [Int]$scanDays) { $this.GetScansHash($conn, $statuses, $scanDays, $null) }
     
     #endregion
@@ -1180,7 +1189,7 @@ class Scans {
         
             $uri = "$($conn.baseUri)/api/scans/?offset=$($this.Offset)&limit=$($this.Limit)"
             if ($scanDays) { $uri += "&from-date=$fromDate" }      
-            if ($statuses) { $uri += "&statuses=$statuses" }
+            if ($statuses -ne "All") { $uri += "&statuses=$statuses" }
             if ($scanIds) { $uri += "&scan-ids=$scanIds" }
            
             $response = ApiCall { Invoke-WebRequest $uri -Method GET -Headers $conn.Headers} $conn
