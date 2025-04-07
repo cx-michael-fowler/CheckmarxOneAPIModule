@@ -6,8 +6,8 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     5.3
-    Date:        10/03/2025
+    Version:     5.4
+    Date:        07/04/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
     
@@ -31,6 +31,7 @@
     5.1        Added Applications Id String to project object
     5.2        Added Projects IDs string to applications
     5.3        Bug Fix
+    5.4        Made IAM Url string available in the CxConnection Object
 
 .Description
     The following functions are available for this module
@@ -409,6 +410,7 @@ class CxOneConnection {
 
     #Connection Variables
     [string]$BaseURI
+    [string]$IamUri
     [HashTable]$Headers
 
     #endregion
@@ -424,8 +426,7 @@ class CxOneConnection {
     Hidden [System.Windows.Forms.Button]$btnOK
     
     #Connection Detail for retry
-    Hidden [string] $ApiKey
-    Hidden [string] $IamUri
+    Hidden [string]$ApiKey
     Hidden [datetime]$TokenExpiry
 
     #endregion
