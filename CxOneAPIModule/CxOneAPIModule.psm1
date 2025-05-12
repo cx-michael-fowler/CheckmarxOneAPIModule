@@ -6,8 +6,8 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     5.5
-    Date:        07/04/2025
+    Version:     5.6
+    Date:        13/05/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
     
@@ -33,6 +33,7 @@
     5.3        Bug Fix
     5.4        Made IAM Url string available in the CxConnection Object
     5.5        Made Tenant string available in the CxConnection Object
+    5.6        Bug fix in Applications classes
 
 .Description
     The following functions are available for this module
@@ -953,13 +954,15 @@ class Application {
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Constructors
 
-    Application ([PSCustomObject]$application) { $this.SetVariables($application) }
+    Application ([PSCustomObject]$application, [System.Collections.Generic.Dictionary[String, Project]]$projects) { 
+        $this.SetVariables($application, $projects) 
+    }
 
     #endregion
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Hidden Methods
     
-    [void] Hidden SetVariables([PSCustomObject]$application) {
+    [void] Hidden SetVariables([PSCustomObject]$application, [System.Collections.Generic.Dictionary[String, Project]]$projects) {
            
         $this.ApplicationID = $application.id        
         $this.ApplicationName = $application.name
@@ -988,7 +991,12 @@ class Application {
         try { $this.ProjectIdsString = ($application.projectIds) -join ";" }
         catch { $this.ProjectIdsString = $null }
 
-        $this.ProjectNames = ($application.rules | Where-Object { $_.type -eq "project.name.in" } | select-object -First 1).value
+        foreach ($pid in $application.projectIds) {
+            if (-NOT [String]::IsNullOrEmpty($this.ProjectNames)) { $this.ProjectNames += ";" }
+            $this.ProjectNames += $projects[$pid].ProjectName
+        }
+
+        #$this.ProjectNames = ($application.rules | Where-Object { $_.type -eq "project.name.in" } | select-object -First 1).value
     }
 
     #endregion    
@@ -1024,7 +1032,9 @@ class Applications {
 
     [void] Hidden GetApplicationsHash([CxOneConnection]$conn) {
         
-        Write-Verbose "Retrieving projects"
+        Write-Verbose "Retrieving Applications"
+
+        $projects = Get-AllProjects $conn
 
         $this.Offset = 0
         $this.ApplicationsHash = [System.Collections.Generic.Dictionary[String, Application]]::New()
@@ -1044,7 +1054,7 @@ class Applications {
                 $this.TotalCount = $json.totalCount   
             }
 
-            foreach ($app in $json.applications) { $this.ApplicationsHash.Add($app.id, [Application]::new($app)) }
+            foreach ($app in $json.applications) { $this.ApplicationsHash.Add($app.id, [Application]::new($app, $projects)) }
 
             Write-Verbose "$($this.Limit) Applications Retrieved with Offset: $($this.Offset)"
             $this.Offset += $this.Limit
