@@ -6,7 +6,7 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     7.0
+    Version:     7.1
     Date:        17/06/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
@@ -37,6 +37,7 @@
     6.0        Expaned results classes to allow for different engine types
     6.1        Bug Fix
     7.0        Added Status details to the Scans classes
+    7.1        Bug Fix
 
 .Description
     The following functions are available for this module
@@ -258,7 +259,7 @@ Function Get-ProjectsByNames {
         [CxOneConnection]$CxOneConnObj,
 
         [Parameter(Mandatory=$true)]
-        [AllowEmptyString()][String]$projectNames,
+        [String]$projectNames,
 
         [Parameter(Mandatory=$false)]
         [Switch]$getBranches
@@ -274,7 +275,6 @@ Function Get-ProjectsByIds {
         [CxOneConnection]$CxOneConnObj,
 
         [Parameter(Mandatory=$true)]
-        [AllowEmptyString()]
         [String]$projectIds,
 
         [Parameter(Mandatory=$false)]
@@ -294,7 +294,7 @@ Function Get-Applications {
     return ([Applications]::new($CxOneConnObj)).ApplicationsHash
 }
 
-#Get all scans filtered by CSV string of statuses. If all statuses are required pass $null or ""
+#Get all scans filtered by CSV string of statuses. If all statuses are required "All" only
 Function Get-AllScans {
     Param(
         [Parameter(Mandatory=$true)]
@@ -302,13 +302,13 @@ Function Get-AllScans {
 
         [Parameter(Mandatory=$true)]
         [ValidateSet("Queued", "Running", "Completed", "Failed", "Partial", "Canceled", "All", IgnoreCase = $false)]
-        [String]$statuses
+        [String[]]$statuses
     )
 
-    return ([Scans]::new($CxOneConnObj, $statuses, $null)).ScansHash
+    return ([Scans]::new($CxOneConnObj, $statuses -join ",", $null)).ScansHash
 }
 
-#Get all scans filtered by CSV string of statuses and number of days to return. If all statuses are required pass $null or ""
+#Get all scans filtered by CSV string of statuses and number of days to return. If all statuses are required "All" only
 Function Get-AllScansByDays {
     Param(
         [Parameter(Mandatory=$true)]
@@ -316,14 +316,14 @@ Function Get-AllScansByDays {
 
         [Parameter(Mandatory=$true)]
         [ValidateSet("Queued", "Running", "Completed", "Failed", "Partial", "Canceled", "All", IgnoreCase = $false)]
-        [String]$statuses,
+        [String[]]$statuses,
 
         [Parameter(Mandatory=$true)]
         [ValidateRange(1,366)]
         [Int]$scanDays
     )
     
-    return ([Scans]::new($CxOneConnObj, $statuses, $scanDays)).ScansHash
+    return ([Scans]::new($CxOneConnObj, $statuses -join ",", $scanDays)).ScansHash
 }
 
 #Get scans filtered by status and scan Ids.
@@ -334,13 +334,13 @@ Function Get-ScansByIds {
 
         [Parameter(Mandatory=$true)]
         [ValidateSet("Queued", "Running", "Completed", "Failed", "Partial", "Canceled", "All", IgnoreCase = $false)]
-        [String]$statuses,
+        [String[]]$statuses,
 
         [Parameter(Mandatory=$true)]
         [String]$scanIds
     )
     
-    return ([Scans]::new($CxOneConnObj, $statuses, $scanIds)).ScansHash
+    return ([Scans]::new($CxOneConnObj, $statuses -join ",", $scanIds)).ScansHash
 }
 
 #Get the last scan for the projects provided in the projects hash. 
@@ -1229,10 +1229,10 @@ class Scans {
     #Get All Scans
     Scans() {}
     
-    # Get scnas with no filters
+    #Get scnas with no filters
     Scans([CxOneConnection]$conn) { $this.GetScansHash($conn, $null, $null, $null) }
 
-    #get Last scans for given hash of projects with option to filter by main branch
+    #Get Last scans for given hash of projects with option to filter by main branch
     Scans([CxOneConnection]$conn, [System.Collections.Generic.Dictionary[String, Project]]$projectsHash, [Switch]$useMainBranch, [String]$branchesCSV) { 
         $this.GetLastScansHash($conn , $projectsHash, $useMainBranch, $branchesCSV)
     }
