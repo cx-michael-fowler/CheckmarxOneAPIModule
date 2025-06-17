@@ -6,7 +6,7 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     7.1
+    Version:     7.2
     Date:        17/06/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
@@ -38,6 +38,7 @@
     6.1        Bug Fix
     7.0        Added Status details to the Scans classes
     7.1        Bug Fix
+    7.2        Bug Fix
 
 .Description
     The following functions are available for this module
@@ -1326,10 +1327,12 @@ class Scans {
             $response = ApiCall { Invoke-WebRequest $uri -Method GET -Headers $conn.Headers } $conn
             $json = ([System.Web.Script.Serialization.JavaScriptSerializer]::New()).DeserializeObject($response)
             $scan = $json[$p.projectId]
-            $scan.Add("projectId", $p.projectId)
-            $scan.Add("projectName", $p.ProjectName)
+            if (-NOT $null -eq $scan) {
+                $scan.Add("projectId", $p.projectId)
+                $scan.Add("projectName", $p.ProjectName)
 
-            $this.ScansHash.Add($scan.id, [Scan]::new($scan)) 
+                $this.ScansHash.Add($scan.id, [Scan]::new($scan))
+            } 
         }
     }
 
