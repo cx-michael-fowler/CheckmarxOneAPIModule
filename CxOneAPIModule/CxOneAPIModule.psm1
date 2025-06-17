@@ -6,8 +6,8 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     6.0
-    Date:        29/05/2025
+    Version:     7.0
+    Date:        17/06/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
     
@@ -36,6 +36,7 @@
     5.6        Bug fix in Applications classes
     6.0        Expaned results classes to allow for different engine types
     6.1        Bug Fix
+    7.0        Added Status details to the Scans classes
 
 .Description
     The following functions are available for this module
@@ -300,7 +301,7 @@ Function Get-AllScans {
         [CxOneConnection]$CxOneConnObj,
 
         [Parameter(Mandatory=$true)]
-        [AllowEmptyString()]
+        [ValidateSet("Queued", "Running", "Completed", "Failed", "Partial", "Canceled", "All", IgnoreCase = $false)]
         [String]$statuses
     )
 
@@ -314,12 +315,10 @@ Function Get-AllScansByDays {
         [CxOneConnection]$CxOneConnObj,
 
         [Parameter(Mandatory=$true)]
-        [AllowEmptyString()]
         [ValidateSet("Queued", "Running", "Completed", "Failed", "Partial", "Canceled", "All", IgnoreCase = $false)]
         [String]$statuses,
 
         [Parameter(Mandatory=$true)]
-        [AllowEmptyString()]
         [ValidateRange(1,366)]
         [Int]$scanDays
     )
@@ -334,7 +333,6 @@ Function Get-ScansByIds {
         [CxOneConnection]$CxOneConnObj,
 
         [Parameter(Mandatory=$true)]
-        [AllowEmptyString()]
         [ValidateSet("Queued", "Running", "Completed", "Failed", "Partial", "Canceled", "All", IgnoreCase = $false)]
         [String]$statuses,
 
@@ -1070,26 +1068,73 @@ class Applications {
 #----------------------------------------------------------------------------------------------------------------------------------------------------
 #region Scans
 
+Class Status {
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+    #region Variables
+
+    [String]$EngineName
+    [String]$Status
+    [String]$Details
+    [Nullable[Datetime]]$StartDate
+    [Nullable[Datetime]]$EndDate
+    [Nullable[Timespan]]$Runtime
+
+    #endregion    
+    #--------------------------------------------------------------------------------------------------------------------------------------
+    #region Constructors
+
+    Status() {}
+
+    Status ([System.Collections.IDictionary]$status) { $this.SetVariables($status) }
+
+    #endregion
+    #--------------------------------------------------------------------------------------------------------------------------------------
+    #region Hidden Methods
+
+    [void] Hidden SetVariables([System.Collections.IDictionary]$status) {
+        
+        $this.EngineName = $status.name
+        $this.Status = $status.status
+        $this.Details = $status.details
+        
+        try { $this.StartDate = [DateTime]$status.startDate }
+        catch {}
+
+        try { $this.EndDate = [DateTime]$status.endDate }
+        catch {}
+
+        try { $this.Runtime = New-TimeSpan –Start $this.StartDate –End $this.EndDate }
+        catch {}
+    }
+    
+    #endregion    
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+}
+
 Class Scan {
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #region Variables
 
-    [string]$ScanID
-    [string]$ProjectId
-    [string]$ProjectName
-    [string]$Status
-    [string]$Branch
-    [string]$Loc
-    [Nullable[datetime]]$CreatedAt
-    [Nullable[datetime]]$UpdatedAt
+    [String]$ScanID
+    [String]$ProjectId
+    [String]$ProjectName
+    [String]$Status
+    [String]$Branch
+    [String]$Loc
+    [System.Collections.Generic.List[Status]]$Statuses
+    [Nullable[Datetime]]$CreatedAt
+    [Nullable[Datetime]]$UpdatedAt
+    [Nullable[Datetime]]$StartDate
+    [Nullable[Datetime]]$EndDate
+    [Nullable[Timespan]]$Runtime
     [Array]$Engines 
-    [string]$EnginesString
-    [string]$UserAgent
-    [string]$Initiator
+    [String]$EnginesString
+    [String]$UserAgent
+    [String]$Initiator
     [System.Collections.IDictionary]$Tags
-    [string]$TagsString
-    [string]$SourceType
-    [string]$SourceOrigin
+    [String]$TagsString
+    [String]$SourceType
+    [String]$SourceOrigin
 
     #endregion    
     #--------------------------------------------------------------------------------------------------------------------------------------
@@ -1111,7 +1156,22 @@ Class Scan {
         $this.Status = $scan.status
         $this.Branch = $scan.branch
         
-        $scan.statusDetails | ForEach-Object -Process { if ($_.loc) { $this.Loc = $_.loc } }
+        $this.Statuses = [System.Collections.Generic.List[Status]]::New()
+        Foreach ($status in $scan.statusDetails) { 
+            if ($status.name -eq "sast") { $this.Loc = $status.loc }
+            if ($status.name -eq "general") {
+                try { $this.StartDate = [DateTime]$status.startDate }
+                catch {}
+
+                try { $this.EndDate = [DateTime]$status.endDate }
+                catch {}
+
+                try { $this.Runtime = New-TimeSpan –Start $this.StartDate –End $this.EndDate }
+                catch {}
+            }
+            if ($status.name -ne "general") { $this.Statuses.Add([Status]::new($status)) 
+            }
+        }
 
         try { $this.CreatedAt = [DateTime]$scan.createdAt }
         catch {}
