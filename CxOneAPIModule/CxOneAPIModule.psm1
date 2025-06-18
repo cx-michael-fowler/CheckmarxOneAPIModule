@@ -6,8 +6,8 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     7.2
-    Date:        17/06/2025
+    Version:     7.3
+    Date:        18/06/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
     
@@ -39,6 +39,7 @@
     7.0        Added Status details to the Scans classes
     7.1        Bug Fix
     7.2        Bug Fix
+    7.3        Modified last scan to return Project ID as key and include null values for projects with no scans
 
 .Description
     The following functions are available for this module
@@ -127,7 +128,7 @@
             CxOneConnObj - Checkmarx One connection object
             statuses - CSV string of scan statuses to filter results
         Example
-            $scans = Get-AllScans $conn "Completed,Partial"
+            $scans = Get-AllScans $conn "Completed","Partial"
             
     Get-AllScansByDays
         Details
@@ -135,7 +136,7 @@
             Key = Scan ID and Value = Scan Object
             Statuses = CSV of Scan statuses to filter results
                Valid Statuses are Queued, Running, Completed, Failed, Partial, Canceled
-               If all Statuses are required use "All
+               If all Statuses are required use "All"
             ScanDays = Number of days to return scan for
                Must be a integer greater or equal to 0 
                0 will return all days
@@ -144,7 +145,7 @@
             Statuses - CSV string of scan statuses
             scanDays - Integer value between 0 and 366
         Example
-            $scans = Get-AllScans $conn "Completed,Partial" 90
+            $scans = Get-AllScans $conn "Completed","Partial" 90
 
     Get-ScansByIds
         Details
@@ -163,8 +164,9 @@
     Get-LastScans
         Details
             Get a hash of the the last scans for the projects provided in the projects hash.
-            Key = Scan ID and Value = Scan Object
+            Key = Project ID and Value = Scan Object
             Optional switch to return last scan for Main Branch (if set)
+            Will return null for projects with no scans
         Parameters
             CxOneConnObj - Checkmarx One connection object
             projectsHash - Hash of projects to return last of. Must be a hash as provided by call above
@@ -175,7 +177,7 @@
     Get-LastScansForGivenBranches
         Details
             Get a hash of the last scan for the projects provided in the projects hash.
-            Key = Scan ID and Value = Scan Object
+            Key = Project ID and Value = Scan Object
             Returns last scan for the branch provided in the CSV file
             branchesCSV must be a file path to a CSV with the header Projects,Branches and one project,branch per line
         Parameters
@@ -302,7 +304,7 @@ Function Get-Applications {
     return ([Applications]::new($CxOneConnObj)).ApplicationsHash
 }
 
-#Get all scans filtered by CSV string of statuses. If all statuses are required "All" only
+#Get all scans filtered by CSV string of statuses. If all statuses are required use "All" only for status
 Function Get-AllScans {
     Param(
         [Parameter(Mandatory=$true)]
@@ -316,7 +318,7 @@ Function Get-AllScans {
     return ([Scans]::new($CxOneConnObj, $statuses -join ",", $null)).ScansHash
 }
 
-#Get all scans filtered by CSV string of statuses and number of days to return. If all statuses are required "All" only
+#Get all scans filtered by CSV string of statuses and number of days to return. If all statuses are required "All" only for status
 Function Get-AllScansByDays {
     Param(
         [Parameter(Mandatory=$true)]
@@ -1327,11 +1329,12 @@ class Scans {
             $response = ApiCall { Invoke-WebRequest $uri -Method GET -Headers $conn.Headers } $conn
             $json = ([System.Web.Script.Serialization.JavaScriptSerializer]::New()).DeserializeObject($response)
             $scan = $json[$p.projectId]
-            if (-NOT $null -eq $scan) {
+            if ($null -eq $scan) { $this.ScansHash.Add($p.projectId, $null) }
+            else { 
                 $scan.Add("projectId", $p.projectId)
                 $scan.Add("projectName", $p.ProjectName)
 
-                $this.ScansHash.Add($scan.id, [Scan]::new($scan))
+                $this.ScansHash.Add($p.projectId, [Scan]::new($scan))
             } 
         }
     }
