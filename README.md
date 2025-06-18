@@ -86,7 +86,7 @@ The following functions are available for this module
             CxOneConnObj - Checkmarx One connection object
             statuses - CSV string of scan statuses to filter results
         Example
-            $scans = Get-AllScans $conn "Completed,Partial"
+            $scans = Get-AllScans $conn "Completed","Partial"
             
     Get-AllScansByDays
         Details
@@ -94,7 +94,7 @@ The following functions are available for this module
             Key = Scan ID and Value = Scan Object
             Statuses = CSV of Scan statuses to filter results
                Valid Statuses are Queued, Running, Completed, Failed, Partial, Canceled
-               If all Statuses are required use "All
+               If all Statuses are required use "All"
             ScanDays = Number of days to return scan for
                Must be a integer greater or equal to 0 
                0 will return all days
@@ -103,7 +103,7 @@ The following functions are available for this module
             Statuses - CSV string of scan statuses to filter results
             scanDays - Integer value between 0 and 366
         Example
-            $scans = Get-AllScans $conn "Completed,Partial" 90
+            $scans = Get-AllScans $conn "Completed","Partial" 90
 
     Get-ScansByIds
         Details
@@ -119,11 +119,12 @@ The following functions are available for this module
         Example
             $scans = Get-Get-ScansByIds $conn "All" "4bf2d7fc-8a7c-420d-ac1a-7c62cebb7bbb,141cf46f-1781-45ab-8cee-0f5856337b2f"
         
-    Get-LastScans
+     Get-LastScans
         Details
             Get a hash of the the last scans for the projects provided in the projects hash.
-            Key = Scan ID and Value = Scan Object
+            Key = Project ID and Value = Scan Object
             Optional switch to return last scan for Main Branch (if set)
+            Will return null object for projects with no scans
         Parameters
             CxOneConnObj - Checkmarx One connection object
             projectsHash - Hash of projects to return last of. Must be a hash as provided by call above
@@ -134,8 +135,9 @@ The following functions are available for this module
     Get-LastScansForGivenBranches
         Details
             Get a hash of the last scan for the projects provided in the projects hash.
-            Key = Scan ID and Value = Scan Object
+            Key = Project ID and Value = Scan Object
             Returns last scan for the branch provided in the CSV file
+            Will return null object for projects with no scans
             branchesCSV must be a file path to a CSV with the header Projects,Branches and one project,branch per line
         Parameters
             CxOneConnObj - Checkmarx One connection object
