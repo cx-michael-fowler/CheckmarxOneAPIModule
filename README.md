@@ -88,7 +88,7 @@ The following functions are available for this module
         Example
             $scans = Get-AllScans $conn "Completed","Partial"
             
-    Get-AllScansByDays
+    Get-ScansByDays
         Details
             Function to get a hash of all scans filtered by statuses provided as a CSV string and number of days.
             Key = Scan ID and Value = Scan Object
@@ -103,21 +103,36 @@ The following functions are available for this module
             Statuses - CSV string of scan statuses to filter results
             scanDays - Integer value between 0 and 366
         Example
-            $scans = Get-AllScans $conn "Completed","Partial" 90
+            $scans = Get-ScansByDays $conn "All","Partial" 90
 
+    Get-ScansByDates
+        Details
+            Function to get a hash of all scans between two dates(inclusive), filtered by statuses.
+            Key = Scan ID and Value = Scan Object
+            Statuses = CSV of Scan statuses to filter results
+               Valid Statuses are Queued, Running, Completed, Failed, Partial, Canceled
+               If all Statuses are required use "All"
+            fromDate = The starting date to return values for
+            toDate = The last date to return values for
+
+        Parameters
+            CxOneConnObj - Checkmarx One connection object
+            Statuses - CSV string of scan statuses
+            fromDate - Date string in the format yyyy-MM-dd
+            toDate - Date string in the format yyyy-MM-dd
+        Example
+            $scans = Get-ScansByDates $conn "Completed","Partial" "2025-01-01" "2025-06-30"
+    
     Get-ScansByIds
         Details
             Function to get a hash scans for a provided as a CSV string of Scan IDs
             Key = Scan ID and Value = Scan Object
-            Statuses = CSV of Scan statuses to filter results
-               Valid Statuses are Queued, Running, Completed, Failed, Partial, Canceled
-               If all Statuses are required use "All
         Parameters
             CxOneConnObj - Checkmarx One connection object
             Statuses - CSV string of scan statuses
             ScanIds - CSV string of scan IDs
         Example
-            $scans = Get-Get-ScansByIds $conn "All" "4bf2d7fc-8a7c-420d-ac1a-7c62cebb7bbb,141cf46f-1781-45ab-8cee-0f5856337b2f"
+            $scans = Get-ScansByIds $conn "All" "4bf2d7fc-8a7c-420d-ac1a-7c62cebb7bbb,141cf46f-1781-45ab-8cee-0f5856337b2f"
         
      Get-LastScans
         Details
