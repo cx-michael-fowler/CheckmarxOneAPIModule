@@ -123,16 +123,25 @@ The following functions are available for this module
         Example
             $scans = Get-ScansByDates $conn "Completed","Partial" "2025-01-01" "2025-06-30"
     
+    Get-ScansByProjects
+        Details
+            Function to get a hash scans for a provided hash of project objects
+            Key = Scan ID and Value = Scan Object
+        Parameters
+            CxOneConnObj - Checkmarx One connection object
+            projectsHash - Hash of projects to return last of. Must be a hash as provided by call above
+        Example
+            $scans = Get-ScansByIds $conn $projects
+
     Get-ScansByIds
         Details
             Function to get a hash scans for a provided as a CSV string of Scan IDs
             Key = Scan ID and Value = Scan Object
         Parameters
             CxOneConnObj - Checkmarx One connection object
-            Statuses - CSV string of scan statuses
             ScanIds - CSV string of scan IDs
         Example
-            $scans = Get-ScansByIds $conn "All" "4bf2d7fc-8a7c-420d-ac1a-7c62cebb7bbb,141cf46f-1781-45ab-8cee-0f5856337b2f"
+            $scans = Get-ScansByIds $conn "4bf2d7fc-8a7c-420d-ac1a-7c62cebb7bbb,141cf46f-1781-45ab-8cee-0f5856337b2f"
         
      Get-LastScans
         Details
