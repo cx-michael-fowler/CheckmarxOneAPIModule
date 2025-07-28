@@ -6,8 +6,8 @@
     This module has been created to simplify common tasks when scritpting for Checkmarx One
 
 .Notes   
-    Version:     7.3
-    Date:        18/06/2025
+    Version:     7.5
+    Date:        28/07/2025
     Written by:  Michael Fowler
     Contact:     michael.fowler@checkmarx.com
     
@@ -41,6 +41,7 @@
     7.2        Bug Fix
     7.3        Modified last scan to return Project ID as key and include null values for projects with no scans
     7.4        Added function to return scan between two dates filter by status + changed scan function names
+    7.5        Add function to get scans filtered by hash of projects as returned by Get-Projects methods
 
 .Description
     The following functions are available for this module
@@ -165,6 +166,16 @@
             toDate - Date string in the format yyyy-MM-dd
         Example
             $scans = Get-ScansByDates $conn "Completed","Partial" "2025-01-01" "2025-06-30"
+   
+    Get-ScansByProjects
+        Details
+            Function to get a hash scans for a provided hash of project objects
+            Key = Scan ID and Value = Scan Object
+        Parameters
+            CxOneConnObj - Checkmarx One connection object
+            projectsHash - Hash of projects to return last of. Must be a hash as provided by call above
+        Example
+            $scans = Get-ScansByIds $conn $projects
 
     Get-ScansByIds
         Details
@@ -377,6 +388,19 @@ Function Get-ScansByDates {
         [uri]::EscapeDataString(([datetime]$fromDate).ToString("yyyy-MM-ddThh:mm:ss.fffffffZ")), 
         [uri]::EscapeDataString(([datetime]$toDate).AddDays(1).AddSeconds(-1).ToString("yyyy-MM-ddThh:mm:ss.fffffffZ"))
     ).ScansHash
+}
+
+#Get scans filtered by status and projects hash
+Function Get-ScansByProjects {
+    Param(
+        [Parameter(Mandatory=$true)]
+        [CxOneConnection]$CxOneConnObj,
+
+        [Parameter(Mandatory=$true)]
+        [System.Collections.Generic.Dictionary[String, Project]]$projectsHash
+    )
+    
+    return ([Scans]::new($CxOneConnObj, "All", $projectsHash)).ScansHash
 }
 
 #Get scans filtered by status and scan Ids.
@@ -1288,17 +1312,22 @@ class Scans {
     }
        
     #Get List of scans filtered by status
-    Scans([CxOneConnection]$conn, [String]$statuses) { $this.GetScansHash($conn, $statuses, $null, $null, $null) }
+    Scans([CxOneConnection]$conn, [String]$statuses) { $this.GetScansHash($conn, $statuses, $null, $null, $null, $null) }
     
-    #Get List of scans filtered by scan ids
-    Scans([CxOneConnection]$conn, [String]$statuses, [String]$scanIds) { $this.GetScansHash($conn, $statuses, $null, $null, $scanIds) }
+    #Get List of scans filtered by statuses and Scan Ids
+    Scans([CxOneConnection]$conn, [String]$statuses, [String]$scanIds) { $this.GetScansHash($conn, $statuses, $null, $null, $scanIds, $null) }
+    
+    #Get List of scans filtered by statuses and Projects Hash
+    Scans([CxOneConnection]$conn, [String]$statuses, [System.Collections.Generic.Dictionary[String, Project]]$projectsHash) { 
+        $this.GetScansHash($conn, $statuses, $null, $null, $null, $projectsHash) 
+    }
 
     #Get List of scans filitered by statuses and number of days
     Scans([CxOneConnection]$conn, [String]$statuses, [Int]$scanDays) { $this.GetScansHashByDays($conn, $statuses, $scanDays, $null) }
 
     #Get List of scans filitered by statuses between two dates
     Scans([CxOneConnection]$conn, [String]$statuses, [string]$fromDate, [string]$toDate) { 
-        $this.GetScansHash($conn, $statuses, $fromDate, $toDate, $null) 
+        $this.GetScansHash($conn, $statuses, $fromDate, $toDate, $null, $null) 
     }
     
     #endregion
@@ -1307,11 +1336,12 @@ class Scans {
     
     [void] Hidden GetScansHashByDays([CxOneConnection]$conn, [String]$statuses, [Int]$scanDays, [String]$scanIds) {
         $fromDate = [uri]::EscapeDataString(([datetime]::Today).AddDays(-$scanDays).ToString("yyyy-MM-ddThh:mm:ss.fffffffZ"))
-        $this.GetScansHash($conn, $statuses, $fromDate, $null, $null)
+        $this.GetScansHash($conn, $statuses, $fromDate, $null, $null, $null)
     }
     
     
-    [void] Hidden GetScansHash([CxOneConnection]$conn, [String]$statuses, [string]$fromDate, [string]$toDate, [String]$scanIds) {
+    [void] Hidden GetScansHash([CxOneConnection]$conn, [String]$statuses, [string]$fromDate, [string]$toDate, 
+                               [String]$scanIds, [System.Collections.Generic.Dictionary[String, Project]]$projectsHash) {
         
         Write-Verbose "Retrieving scans"
 
@@ -1327,6 +1357,7 @@ class Scans {
             if ($toDate) { $uri += "&to-date=$toDate" }        
             if ($statuses -ne "All") { $uri += "&statuses=$statuses" }
             if ($scanIds) { $uri += "&scan-ids=$scanIds" }
+            if ($projectsHash) { $uri += "&project-ids=$($projectsHash.keys -join ",")" }
            
             $response = ApiCall { Invoke-WebRequest $uri -Method GET -Headers $conn.Headers} $conn
             $json = ([System.Web.Script.Serialization.JavaScriptSerializer]::New()).DeserializeObject($response) 
