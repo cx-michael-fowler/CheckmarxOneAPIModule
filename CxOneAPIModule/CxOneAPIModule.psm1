@@ -45,6 +45,7 @@
     7.6        Add option to retrieve Application risk
     7.7        Updated SSCS results to identify Secrets vs Scorecard and change counters from Secrets to SSCS
     7.8        Added -UseBasicParsing switch to all Invoke-WebRequest and Invoke-RestMethod calls
+    7.9        Added ReCalc Status field to scan object
     
 .Description
     The following functions are available for this module
@@ -1234,6 +1235,7 @@ Class Scan {
     [String]$TagsString
     [String]$SourceType
     [String]$SourceOrigin
+    [String]$RecalcStatus
 
     #endregion    
     #--------------------------------------------------------------------------------------------------------------------------------------
@@ -1300,6 +1302,7 @@ Class Scan {
 
         $this.SourceType = $scan.sourceType
         $this.SourceOrigin = $scan.sourceOrigin
+        $this.RecalcStatus = $scan.recalcStatus
     }
     
     #endregion    
@@ -1363,8 +1366,7 @@ class Scans {
     [void] Hidden GetScansHashByDays([CxOneConnection]$conn, [String]$statuses, [Int]$scanDays, [String]$scanIds) {
         $fromDate = [uri]::EscapeDataString(([datetime]::Today).AddDays(-$scanDays).ToString("yyyy-MM-ddThh:mm:ss.fffffffZ"))
         $this.GetScansHash($conn, $statuses, $fromDate, $null, $null, $null)
-    }
-    
+    } 
     
     [void] Hidden GetScansHash([CxOneConnection]$conn, [String]$statuses, [string]$fromDate, [string]$toDate, 
                                [String]$scanIds, [System.Collections.Generic.Dictionary[String, Project]]$projectsHash) {
